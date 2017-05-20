@@ -113,7 +113,7 @@ local ChoresWheel = Class(Widget, function(self)
   -- -- self:BtnDeploy()
   -- print('CHO.TEST', CountDown.TEST)
   end)
-function ChoresWheel:Toggle()
+function ChoresWheel:Toggle()--toggle visibility of the widget
   if self.shown then
     self:Hide()
 
@@ -122,7 +122,7 @@ function ChoresWheel:Toggle()
     self:Show()
   end
 end
-function ChoresWheel:MakeBtn(task, icon)
+function ChoresWheel:MakeBtn(task, icon)--creates a button
   local btn =  self.root:AddChild(ImageButton(ATLASINV, icon .. ".tex"))
   btn.image:SetSize(50,50)
 
@@ -140,7 +140,7 @@ function ChoresWheel:MakeBtn(task, icon)
   if task ~= icon then updateTint() end
 
   btn.updateTint = updateTint
-  btn:SetOnClick(function() self:BtnClick(task, icon) end)
+  btn:SetOnClick(function() self:BtnClick(task, icon) end)--assign the handler of the OnClick event
 
   local widget = self
   local _OnGainFocus = btn.OnGainFocus 
@@ -173,7 +173,7 @@ end
 
 
 
-function ChoresWheel:BtnGainFocus(task, icon) 
+function ChoresWheel:BtnGainFocus(task, icon) --on the focus of planting displays the placers
   if task == "book_gardening" and icon == "book_gardening" then
 
     if self.placers ~= nil then return end 
@@ -202,12 +202,14 @@ function ChoresWheel:BtnGainFocus(task, icon)
     print(placer_item)
     if placer_item == nil then 
       -- 심을것 없음 에러 
+      --No planting error
       return
     end
  
 
     if Inst(placer_item):inventoryitem() == nil then 
       -- 심을것 없음 에러 
+      --No planting error
       return
     end
  
@@ -266,7 +268,7 @@ function ChoresWheel:BtnGainFocus(task, icon)
   end
 end
 
-function ChoresWheel:BtnLoseFocus(task, icon)
+function ChoresWheel:BtnLoseFocus(task, icon)--remove placers on lose focus of planting
   if task == "book_gardening" and icon == "book_gardening" then
     if self.placers == nil then return end 
     for k, v in pairs(self.placers) do
@@ -279,6 +281,7 @@ end
 
 
 function ChoresWheel:DoTask(task) 
+  --saves self.flags into flags
   local flags = {}
   for key, flag in pairs(self.flag[task]) do
     flags[key] = flag

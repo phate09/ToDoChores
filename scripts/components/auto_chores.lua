@@ -1,8 +1,7 @@
 
-
+local GLOBAL
 local Inst = require "chores-lib.instance" 
 local PrefabLibary = require("chores-lib.prefablibrary")  
-
 
 
 local ChoreLib = PrefabLibary(function (proto)
@@ -55,7 +54,9 @@ local AutoChores = Class(function(self, inst)
   end,
   nil,
   { })
-
+function AutoChores:SetGlobal(global)
+	GLOBAL=global
+end
 function AutoChores:SetTask(task, flag, placer)   
   self:ClearPlacer()
   self.task = task -- "LumberJack"
@@ -176,6 +177,24 @@ function AutoChores:OverridePC()--player controller
        print("Position:",pos)
        local seed = act.invobject
        print("Item:",seed)
+       if( GLOBAL.TheWorld.Map:CanDeployPlantAtPoint(pos, seed) ) then
+--			if letsDoDebug then print("Planting plant") end
+			if( self.ismastersim ) then
+				local act = BufferedAction( self.inst, nil, ACTIONS.DEPLOY, seed, pos, nil )
+				self.inst.components.locomotor:PushAction(act,true)
+			else
+				local act = BufferedAction( self.inst, nil, ACTIONS.DEPLOY, seed, pos, nil )
+				act.preview_cb = function()
+					--SendRPCToServer(RPC.RightClick, act.action.code, pos.x, pos.z, act.target, false, controlmods, nil, act.action.mod_name)
+					SendRPCToServer(RPC.ControllerActionButtonDeploy, seed, pos.x, pos.z)
+				end
+				self:DoAction(act)
+			end
+--			self.passtime = 10
+--			forcePlantSapling = nil
+--			doTimeDelay = GetTime() + 0.75
+			return
+		end
 				--if( self.ismastersim ) then
 --				print("ismaster")
 --					local act = BufferedAction( self.inst, nil, ACTIONS.DEPLOY, seed, pos, nil )
@@ -187,10 +206,10 @@ function AutoChores:OverridePC()--player controller
 --					local RPC = GLOBAL.RPC
 --					local SendRPCToServer = GLOBAL.SendRPCToServer
 						--SendRPCToServer(RPC.RightClick, act.action.code, pos.x, pos.z, act.target, false, controlmods, nil, act.action.mod_name)
-						if( _G.TheWorld.Map:CanDeployPlantAtPoint(pos, seed) ) then
-						self.passtime = 20
-						_G.SendRPCToServer(_G.RPC.ControllerActionButtonDeploy, seed, pos.x, pos.z)
-						end
+--						if( _G.TheWorld.Map:CanDeployPlantAtPoint(pos, seed) ) then
+--						self.passtime = 20
+--						_G.SendRPCToServer(_G.RPC.ControllerActionButtonDeploy, seed, pos.x, pos.z)
+--						end
 --					end
 --					self:DoAction(act)
 --				end
@@ -220,6 +239,65 @@ function AutoChores:OverridePC()--player controller
   pc.GetActionButtonAction = _fnOver
 
 end
+
+--function PlayerController:DoControllerActionButton()
+--    if self.placer ~= nil then
+--        --do the placement
+--        if self.placer_recipe ~= nil and
+--            self.placer.components.placer.can_build and
+--            self.inst.replica.builder ~= nil and
+--            not self.inst.replica.builder:IsBusy() then
+--            self.inst.replica.builder:MakeRecipeAtPoint(self.placer_recipe, self.placer:GetPosition(), self.placer:GetRotation(), self.placer_recipe_skin)
+--            self:CancelPlacement()
+--        end
+--        return
+--    end
+--
+--    local obj = nil
+--    local act = nil
+--    if self.deployplacer ~= nil then
+--        if self.deployplacer.components.placer.can_build then
+--            act = self.deployplacer.components.placer:GetDeployAction()
+--            if act ~= nil then
+--                obj = act.invobject
+--                act.distance = 1
+--            end
+--        end
+--    else
+--        obj = self:GetControllerTarget()
+--        if obj ~= nil then
+--            act = self:GetSceneItemControllerAction(obj)
+--        end
+--    end
+--
+--    if act == nil then
+--        return
+--    elseif self.ismastersim then
+--        self.inst.components.combat:SetTarget(nil)
+--    elseif self.deployplacer ~= nil then
+--        if self.locomotor == nil then
+--            self.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
+--            SendRPCToServer(RPC.ControllerActionButtonDeploy, obj, act.pos.x, act.pos.z, act.rotation ~= 0 and act.rotation or nil)
+--        elseif self:CanLocomote() then
+--            act.preview_cb = function()
+--                self.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
+--                local isreleased = not TheInput:IsControlPressed(CONTROL_CONTROLLER_ACTION)
+--                SendRPCToServer(RPC.ControllerActionButtonDeploy, obj, act.pos.x, act.pos.z, act.rotation ~= 0 and act.rotation or nil, isreleased)
+--            end
+--        end
+--    elseif self.locomotor == nil then
+--        self.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
+--        SendRPCToServer(RPC.ControllerActionButton, act.action.code, obj, nil, act.action.canforce, act.action.mod_name)
+--    elseif self:CanLocomote() then
+--        act.preview_cb = function()
+--            self.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
+--            local isreleased = not TheInput:IsControlPressed(CONTROL_CONTROLLER_ACTION)
+--            SendRPCToServer(RPC.ControllerActionButton, act.action.code, obj, isreleased, nil, act.action.mod_name)
+--        end
+--    end
+--
+--    self:DoAction(act)
+--end
 
 function AutoChores:GetItem(fn)
   local hands = self.INST:inventory_GetEquippedItem(EQUIPSLOTS.HANDS)
