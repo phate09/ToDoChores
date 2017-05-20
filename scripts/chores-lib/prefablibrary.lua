@@ -1,10 +1,3 @@
--- local is_dst
--- function IsDST()
---   if is_dst == nil then
---     is_dst = kleifileexists("scripts/networking.lua") and true or false
---   end
---   return is_dst
--- end
 
 local PrefabLibrary = Class( function(self, fn)
 	self.stats = {}
@@ -39,10 +32,6 @@ function PrefabLibrary:Get(item, data)
     print(item, item.prefab)
     -- item.test.aaa()
     return nil
-  end
-
-  if IsDST() == false then 
-    return self.fn(item, data)
   end
 
   local prefab = item.prefab

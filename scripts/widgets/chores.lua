@@ -1,8 +1,8 @@
 local Widget = require "widgets/widget"
 local ImageButton = require "widgets/imagebutton"
 local Image = require "widgets/image"
-local BadgeWheel = require("chores-lib.badgewheel") 
-local CountDown = require("chores-lib.countdown") 
+--local BadgeWheel = require("chores-lib.badgewheel") 
+--local CountDown = require("chores-lib.countdown") 
 local Inst = require "chores-lib.instance" 
 
 CW = nil

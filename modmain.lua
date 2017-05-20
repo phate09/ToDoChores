@@ -1,31 +1,16 @@
 local _G = GLOBAL
 local TUNING = _G.TUNING
-GLOBAL.CHEATS_ENABLED = true
-GLOBAL.require( 'debugkeys' )
+_G.CHEATS_ENABLED = true
+_G.require( 'debugkeys' )
 
-local is_dst
-function IsDST()
-  if is_dst == nil then
-    is_dst = GLOBAL.kleifileexists("scripts/networking.lua") and true or false
-  end
-  return is_dst
-end
-_G.IsDST = IsDST
-
-function SetTheWorld()
-  if IsDST() == false then 
-    local TheWorld = _G.GetWorld()
-    _G.rawset(_G, "TheWorld", TheWorld)
-    -- _G.TheWorld = TheWorld
-  end
-end
-function SetThePlayer(player)
-  if IsDST() == false then  
-    _G.rawset(_G, "ThePlayer", player)
-    -- _G.TheWorld = TheWorld
-  end
-end 
-
+--local is_dst
+--function IsDST()
+--  if is_dst == nil then
+--    is_dst = GLOBAL.kleifileexists("scripts/networking.lua") and true or false
+--  end
+--  return is_dst
+--end
+--_G.IsDST = IsDST
 
 -------------
 -- Wdiget 
@@ -41,20 +26,12 @@ function OnActivated(player)
   _G.ThePlayer:AddComponent("auto_chores")
 end
 
-function SimPostInit(player)
+function SimPostInit(player)--after the world is initialised
   -- example of modifying the player charater
   -- player.components.health:SetMaxHealth(50)
 
   print("SimPostInit")
-  if IsDST() then
-    _G.TheWorld:ListenForEvent("playeractivated", OnActivated)
-
-  else 
-    -- local TheWorld = _G.TheWorld and _G.TheWorld or _G.GetWorld()
-    SetTheWorld()
-    SetThePlayer(player)
-    OnActivated(player) 
-  end
+    _G.TheWorld:ListenForEvent("playeractivated", OnActivated)--waits for the player to be active
 
 end
 
@@ -88,17 +65,12 @@ end
 
 local function AddWidget(parent)
 
-  local ControlWidget = _G.require "widgets/chores"
+  local ControlWidget = _G.require "widgets/chores" --load the widget chores class instance
 
   local widget = parent:AddChild(ControlWidget())   
   widget:Hide()
 
-  -- local keydown = false
-  -- GLOBAL.TheInput:AddKeyDownHandler(ToggleButton, function()
-  --   if not IsDefaultScreen() then return end 
-  --   widget:Show()
-  --   end)
-  GLOBAL.TheInput:AddKeyUpHandler(ToggleButton, function()
+  GLOBAL.TheInput:AddKeyUpHandler(ToggleButton, function()--adds the eventhandler to the keyboard when pressing the button
     if not IsDefaultScreen() then return end 
     widget:Toggle()
     end)
@@ -113,7 +85,7 @@ Assets = {
 
 if IsDST() then
   AddClassPostConstruct( "widgets/controls", function (controls)
-    AddWidget(controls)
+    AddWidget(controls)--adds the widget to the controls collection
     end  )
 else 
   table.insert(Assets, Asset("ATLAS", "images/avatars.xml"))

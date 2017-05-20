@@ -16,7 +16,7 @@ local ChoreLib = PrefabLibary(function (proto)
   return stat
   end)
 
-local function _isChopper(item)
+local function _isChopper(item) --check if the object can chop
   if item == nil then return false end
   local stat = ChoreLib:Get(item)
   if stat == nil then return false end
@@ -24,14 +24,14 @@ local function _isChopper(item)
   return stat.tool.CHOP
 end
 
-local function _isDigger(item)
+local function _isDigger(item) --check if the object can dig
   if item == nil then return false end
   local stat = ChoreLib:Get(item)
   if stat == nil then return false end
   if stat.tool == nil then return false end
   return stat.tool.DIG
 end
-local function _isMiner(item)
+local function _isMiner(item) --check if the object can mine
   if item == nil then return false end
   local stat = ChoreLib:Get(item)
   if stat == nil then return false end
@@ -45,7 +45,7 @@ local AutoChores = Class(function(self, inst)
   self.INST = Inst(inst)  
 
   print("AutoChores") 
-  self.inst:ListenForEvent("actionfailed", function(inst) inst.components.auto_chores:StopLoop() end)
+  self.inst:ListenForEvent("actionfailed", function(inst) inst.components.auto_chores:StopLoop() end)--when an action has failed stops the loop
 
   
   self.ActionButtonDown = true
