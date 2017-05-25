@@ -42,7 +42,7 @@ local ChoresWheel = Class(Widget, function(self)
 
   self.flag ={
     axe = {pinecone = false, charcoal = false},
-    pickaxe = { nitre = false, goldnugget = true},
+    pickaxe = { nitre = false, goldnugget = true, ice=false},
     shovel = { dug_grass = true, dug_berrybush = true, dug_sapling = true},
     backpack = { cutgrass = true, berries = true, twigs = true, flint = true, green_cap = false, carrot = false, petals = false},
     book_gardening = { dug_grass = true, dug_berrybush = false, dug_sapling = false, pinecone = false, acorn=false}
@@ -50,7 +50,7 @@ local ChoresWheel = Class(Widget, function(self)
 
   self.layout ={
     {"axe", "pinecone", "charcoal"},
-    {"pickaxe", "nitre","goldnugget"},
+    {"pickaxe", "nitre","goldnugget","ice"},
     {"backpack", "flint", "cutgrass", "twigs", "berries","green_cap", "carrot", "petals"},
     {"shovel", "dug_grass", "dug_berrybush", "dug_sapling"},
     {"book_gardening", "dug_grass", "dug_berrybush", "dug_sapling", "pinecone","acorn"}

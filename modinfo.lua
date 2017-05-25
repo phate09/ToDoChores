@@ -1,7 +1,7 @@
 name = "To Do Chores [Forked]"
-description = "To do chores, it is painful works but imperatively necessary for surviving."
+description = "Automate gathering, chopping, digging and planting!"
 author = "phate09"
-version = "0.7"
+version = "1.0.1"
 
 forumthread = ""
 

@@ -169,14 +169,12 @@ function AutoChores:OverridePC()--player controller
           self.passtime = 10 -- 10 * 0.03초 => 0.3초
           return
         elseif bufaction.action == ACTIONS.DEPLOY then 
-        -- TODO 디플로이 기능 구현 하기
-        -- local act = BufferedAction(self.builder, nil, ACTIONS.DEPLOY, act.invobject, Vector3(self.inst.Transform:GetWorldPosition()))  
         local act = bufaction
         
        local pos = bufaction.pos
-       print("Position:",pos)
+--       print("Position:",pos)
        local seed = act.invobject
-       print("Item:",seed)
+--       print("Item:",seed)
        if( GLOBAL.TheWorld.Map:CanDeployPlantAtPoint(pos, seed) ) then
 --			if letsDoDebug then print("Planting plant") end
 			if( self.ismastersim ) then
@@ -190,47 +188,8 @@ function AutoChores:OverridePC()--player controller
 				end
 				self:DoAction(act)
 			end
---			self.passtime = 10
---			forcePlantSapling = nil
---			doTimeDelay = GetTime() + 0.75
 			return
 		end
-				--if( self.ismastersim ) then
---				print("ismaster")
---					local act = BufferedAction( self.inst, nil, ACTIONS.DEPLOY, seed, pos, nil )
---					self.inst.components.locomotor:PushAction(act,true)
---				else
---				print("isnotmaster")
---					local act = BufferedAction( self.inst, nil, ACTIONS.DEPLOY, seed, pos, nil )
---					act.preview_cb = function()
---					local RPC = GLOBAL.RPC
---					local SendRPCToServer = GLOBAL.SendRPCToServer
-						--SendRPCToServer(RPC.RightClick, act.action.code, pos.x, pos.z, act.target, false, controlmods, nil, act.action.mod_name)
---						if( _G.TheWorld.Map:CanDeployPlantAtPoint(pos, seed) ) then
---						self.passtime = 20
---						_G.SendRPCToServer(_G.RPC.ControllerActionButtonDeploy, seed, pos.x, pos.z)
---						end
---					end
---					self:DoAction(act)
---				end
-        --if not self.ismastersim then  
---          print("not master")
---          local position = bufaction.pos
---          local mouseover = false -- TheInput:GetWorldEntityUnderMouse()
---          local controlmods = nil
---
---          local function _cb() 
---            self.remote_controls[CONTROL_SECONDARY] = 0
---            local isreleased = true
---            SendRPCToServer(RPC.RightClick, act.action.code, position.x, position.z, mouseover, isreleased, controlmods, nil, act.action.mod_name)
---            -- print("PLAYER:inventory_ReturnActiveItem()")
---            -- PLAYER:inventory_ReturnActiveItem()              
---          end
---          act.preview_cb = _cb
---        end
-
---        self:DoAction(act)
---        return
       end
     end
     return bufaction 
@@ -358,21 +317,21 @@ SEE_DIST_LOOT = 5
 
 
 
-function AutoChores:GetLumberJackAction()
+function AutoChores:GetLumberJackAction()--actions for chopping
   -- print('GetLumberJackAction')
 
   local item = nil 
 
   item = self:GetItem(_isChopper)
   if item == nil then
-    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isChopper)
+    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isChopper)--if there is something that can chop on the ground
     if target then
-      return BufferedAction(self.inst, target, ACTIONS.PICKUP )
+      return BufferedAction(self.inst, target, ACTIONS.PICKUP )--pick it up
     end 
     
     local recipe = "axe"
-    if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
-      return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
+    if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then--if knows how to build an axe
+      return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1) --build it
     end
     return nil
   end
@@ -380,25 +339,25 @@ function AutoChores:GetLumberJackAction()
 
 
 
-  item = self:GetItem(_isDigger)
+  item = self:GetItem(_isDigger)--get the digger object
 
   -- print("finded digger = ", item)
 
   if item == nil then 
-    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isDigger)
+    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isDigger)--find a digger on the ground
     if target then
-      return BufferedAction(self.inst, target, ACTIONS.PICKUP )
+      return BufferedAction(self.inst, target, ACTIONS.PICKUP )--pick it up
     end 
 
     local recipe = "shovel"
-    if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+    if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then--build a shovel if knows how to build
       return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
     end
   end
 
   local digger = item 
   
-  local target = FindEntity(self.inst, SEE_DIST_LOOT, function (item)
+  local target = FindEntity(self.inst, SEE_DIST_LOOT, function (item)--see if it can find something to pick up
     if item == nil then return false end
     if item.prefab == "log" then return true end 
     if self.task_flag["charcoal"] == true and item.prefab == "charcoal" then return true end 
@@ -407,20 +366,20 @@ function AutoChores:GetLumberJackAction()
     return false
     end)
   if target then
-    return BufferedAction(self.inst, target, ACTIONS.PICKUP )
+    return BufferedAction(self.inst, target, ACTIONS.PICKUP )--pick it up
   end 
 
 
   if digger then
-    local target = FindEntity(self.inst, SEE_DIST_WORK_TARGET, function (item)
+    local target = FindEntity(self.inst, SEE_DIST_LOOT, function (item)--find a stump nearby
       return item ~= nil and item:HasTag("stump") 
       end)
     if target then
-      if self:TestHandAction(_isDigger) == false then
+      if self:TestHandAction(_isDigger) == false then --if digger is not equipped
         -- print("do Equip digger", digger)
-        return BufferedAction(self.inst, nil, ACTIONS.EQUIP, digger)
+        return BufferedAction(self.inst, nil, ACTIONS.EQUIP, digger) --equip it
       end
-      return BufferedAction(self.inst, target, ACTIONS.DIG, digger )
+      return BufferedAction(self.inst, target, ACTIONS.DIG, digger ) --otherwise dig the stump
     end 
   end 
 
@@ -446,8 +405,7 @@ function AutoChores:GetLumberJackAction()
 end 
 
 
-function AutoChores:GetMinerAction()
-  -- print('GetLumberJackAction')
+function AutoChores:GetMinerAction()--actions for mining
 
   local item = nil 
 
@@ -472,6 +430,7 @@ function AutoChores:GetMinerAction()
     if item == nil then return false end
     if self.task_flag["nitre"] == true and item.prefab == "nitre" then return true end 
     if self.task_flag["goldnugget"] == true and item.prefab == "goldnugget" then return true end 
+    if self.task_flag["ice"] == true and item.prefab == "ice" then return true end 
     if item.prefab == "flint" then return true end 
     if item.prefab == "rocks" then return true end   
     return false 
@@ -485,9 +444,11 @@ function AutoChores:GetMinerAction()
 --miner target
   if minner then 
     local target = FindEntity(self.inst, SEE_DIST_WORK_TARGET, function (item) 
+    		
       if item == nil then return false end
       if self.task_flag["nitre"] == true and item.prefab == "rock1" then return true end 
       if self.task_flag["goldnugget"] == true and item.prefab == "rock2" then return true end 
+      if self.task_flag["ice"] == true and item.prefab == "rock_ice" and item.components.workable:CanBeWorked() then print("workable:",item," ? ",item.components.workable:CanBeWorked()) return true end 
       if item.prefab == "rock_flintless" then return true end 
       return false
 

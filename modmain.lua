@@ -1,6 +1,6 @@
 local TUNING = GLOBAL.TUNING
-GLOBAL.CHEATS_ENABLED = true
-GLOBAL.require( 'debugkeys' )
+--GLOBAL.CHEATS_ENABLED = true
+--GLOBAL.require( 'debugkeys' )
 
 -------------
 -- Wdiget 

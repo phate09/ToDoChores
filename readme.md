@@ -13,8 +13,6 @@ I will NOT fix "strange" bugs: if it works on my machine it is fine to me, you m
 If it is a bug I can replicate I will fix it.
 
 
-
-
 How To Use
 ----------------------
 1. Open Widget (default Key "V") 
@@ -59,39 +57,54 @@ The other is option of chores.
   * dug saplings - same 
   * pine cone - same 
 
+Planned Changes and ideas
+------------------------
+* In-game menu for configuration
+* Actions as checkboxes: the actions are going to be toggleable so that the character will perform any actions turned on. (Picking up carrots while shoveling saplings? Want to dig but not pick? etc)
+* Auto Fertilise action?
+* Auto Check traps?
+* Auto Cooking?
+* Auto dry meat?
+* Auto Harvest fields?
 
 Changes Log
 ------------------------
+1.0.1
+	Solved teleport bug when pressing N
+	Reduced radius at which to dig stumps
+	Added Ice as a an option in the "Dig" row
+1.0
+	Solved issue with planting when the user was not the host of the server (FINALLY!)
 0.7
-  added pickup of mushrooms
-  added pickup of carrots
-  added pickup of flowers
-  reduced radius at which bush berries are planted
-  added planting of birchnuts
-  reduced radius at which cones and birchnuts are planted
-  integrated picking up from juicy berry bushes (into the pick berries action)
-  added planting of juicy berries (planted along with common berry bushes)
-  added configuration for size of field when planting
-  solved some minor bugs that were spotted in the previous version but not implemented
+	added pickup of mushrooms
+	added pickup of carrots
+	added pickup of flowers
+	reduced radius at which bush berries are planted
+	added planting of birchnuts
+	reduced radius at which cones and birchnuts are planted
+	integrated picking up from juicy berry bushes (into the pick berries action)
+	added planting of juicy berries (planted along with common berry bushes)
+	added configuration for size of field when planting
+	solved some minor bugs that were spotted in the previous version but not implemented
   
 
 Fork
 ------------------------
 0.6
-  change pickup item radious(25 -> 5)
+	change pickup item radious(25 -> 5)
 0.5
-  bugfix : modmain.lua for DS/ROG (working correctly, now ) 
-  new : add 'berrybush2'
-  new : add 'charcoal'
-  reposition widget to left side
+	bugfix : modmain.lua for DS/ROG (working correctly, now ) 
+	new : add 'berrybush2'
+	new : add 'charcoal'
+	reposition widget to left side
 
 0.4
-fix crash planting on client
-  fix planting color bug on client
-  fix planting location on client
-  fix crash placer == nil (tnk to iRukario)
+	fix crash planting on client
+	fix planting color bug on client
+	fix planting location on client
+	fix crash placer == nil (tnk to iRukario)
 
 0.3 
-  fix crash when planting from backpack  ( thx to Solo feeder )
+	fix crash when planting from backpack  ( thx to Solo feeder )
 
 
