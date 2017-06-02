@@ -27,53 +27,51 @@ server_filter_tags = {"chores", "geometry", "mine", "wood","chop", "AI", "auto"}
 icon_atlas = "modicon.xml"
 icon = "to-do-chores.tex"
 
-local alpha = {"A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"}
-local KEY_A = 97
-local keyslist = {} 
-local Default_Key =  "V" 
-for i = 1,#alpha do 
-  keyslist[i] = {description = alpha[i],data = i + KEY_A - 1}
-  if alpha[i] == Default_Key then
-    Default_Key = keyslist[i].data
-  end
+local KEY_A = 65
+local keyslist = {}
+local string = ""
+for i = 1, 26 do
+	local ch = string.char(KEY_A + i - 1)
+	keyslist[i] = {description = ch, data = ch}
 end
 
+local numeric_list={}
+for i = 1,9 do
+	numeric_list[i] = {description = i,data = i}
+end
 local Default_planting_x = 4
 local Default_planting_y = 5
-local x_list = {}
-local y_list = {}
-for i = 1,9 do 
-  x_list[i] = {description = i,data = i}
-  y_list[i] = {description = i,data = i}
-  if i == Default_planting_x then
-    Default_planting_x = x_list[i].data
-  end
-  if i == Default_planting_y then
-    Default_planting_y = y_list[i].data
-  end
-end
 
 configuration_options =
 {
   {
     name = "togglekey",
     label = "Open Chores Wheel",
+    longlabel="Which button should open the in-game settings menu?",
     options = keyslist,
-    default = Default_Key
-
+    default = "V",
+    hover="Changing this from in-game won't work. Sorry.",
+  }, 
+  {
+    name = "dummyvalue",
+    label = "",
+    longlabel="",
+    options = {},
+--    default = "V",
+--    hover="Changing this from in-game won't work. Sorry.",
   }, 
   {
     name = "planting_x",
     label = "How big is the planting square horizontally",
-    options = x_list,
-    default = Default_planting_x
+    options = numeric_list,
+    default = 4
 
   },
   {
     name = "planting_y",
     label = "How big is the planting square vertically",
-    options = y_list,
-    default = Default_planting_y
+    options = numeric_list,
+    default = 5
 
   } 
 }

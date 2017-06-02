@@ -4,6 +4,9 @@ local Image = require "widgets/image"
 --local BadgeWheel = require("chores-lib.badgewheel") 
 --local CountDown = require("chores-lib.countdown") 
 local Inst = require "chores-lib.instance" 
+--package.path = package.path .. ";../?.lua"
+--local Main  = require "../modmain"
+local CONFIG
 
 CW = nil
 
@@ -113,6 +116,9 @@ local ChoresWheel = Class(Widget, function(self)
   -- -- self:BtnDeploy()
   -- print('CHO.TEST', CountDown.TEST)
   end)
+function ChoresWheel:SetConfig(config)
+	CONFIG=config
+end
 function ChoresWheel:Toggle()--toggle visibility of the widget
   if self.shown then
     self:Hide()
@@ -128,7 +134,7 @@ function ChoresWheel:MakeBtn(task, icon)--creates a button
 
   self.root.btns[task][icon] = btn
   local function updateTint() 
-    print("updateTint",  self.flag[task][icon])
+    --print("updateTint",  self.flag[task][icon])
     if self.flag[task][icon] == false then
       btn.image:SetTint(.2,.2,.2,1)
     else
@@ -136,7 +142,7 @@ function ChoresWheel:MakeBtn(task, icon)--creates a button
     end 
   end
 
-  print("ti ", task, icon)
+  --print("ti ", task, icon)
   if task ~= icon then updateTint() end
 
   btn.updateTint = updateTint
@@ -199,7 +205,7 @@ function ChoresWheel:BtnGainFocus(task, icon) --on the focus of planting display
 
     -- local placer_item = SpawnPrefab(prefab_name) 
 
-    print(placer_item)
+    --print(placer_item)
     if placer_item == nil then 
       -- 심을것 없음 에러 
       --No planting error
@@ -218,11 +224,11 @@ function ChoresWheel:BtnGainFocus(task, icon) --on the focus of planting display
     self:StartUpdating()
 
 	--load from config
-	local modnameFancy = "To Do Chores [Forked]"
-	local modnameActual = KnownModIndex:GetModActualName(modnameFancy)
-
-    for xOff = 0, GetModConfigData("planting_x",modnameActual)-1, 1 do
-      for zOff = 0, GetModConfigData("planting_y",modnameActual)-1, 1 do 
+	--local modnameFancy = "To Do Chores [Forked]"
+--	local modnameActual = KnownModIndex:GetModActualName(modnameFancy)
+	print("showing "..CONFIG.ac_planting_x.."x"..CONFIG.ac_planting_y.." grid")
+    for xOff = 0, CONFIG.ac_planting_x-1, 1 do
+      for zOff = 0, CONFIG.ac_planting_y-1, 1 do 
         local deployplacer = SpawnPrefab(placer_name)
         table.insert( self.placers, deployplacer)  
         deployplacer.components.placer:SetBuilder(ThePlayer, nil, placer_item)
@@ -281,6 +287,7 @@ end
 
 
 function ChoresWheel:DoTask(task) 
+	print("do task"..task)
   --saves self.flags into flags
   local flags = {}
   for key, flag in pairs(self.flag[task]) do

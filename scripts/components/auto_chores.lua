@@ -1,5 +1,6 @@
 
 local GLOBAL
+local CONFIG
 local Inst = require "chores-lib.instance" 
 local PrefabLibary = require("chores-lib.prefablibrary")  
 
@@ -57,16 +58,23 @@ local AutoChores = Class(function(self, inst)
 function AutoChores:SetGlobal(global)
 	GLOBAL=global
 end
+function AutoChores:SetConfig(config)
+	CONFIG=config
+end
 function AutoChores:SetTask(task, flag, placer)   
   self:ClearPlacer()
-  self.task = task -- "LumberJack"
+  self.task = task
   self.task_flag = flag
   self.task_placer = placer
   print("SetTask", task, flag, placer) 
 end 
 function AutoChores:ForceStop()
   -- body
-  self.inst.components.locomotor:Clear()
+  if self.inst.components.locomotor ~=nil then
+  	self.inst.components.locomotor:Clear()
+  else
+  	print("Locomotor is nil")
+  end
   self:StopLoop()
 end
 
@@ -154,43 +162,62 @@ function AutoChores:OverridePC()--player controller
     end
 
     local bufaction = auto_chores:GetAction()
+	if bufaction~=nil then
+--    print("auto_chores", bufaction)
+--    if bufaction == nil then 
+--      auto_chores:StopLoop() 
+--    else
+		if bufaction.action == ACTIONS.BUILD  then
+			if not PLAYER:builder_IsBusy() then
+				self.passtime = 20 -- 20 * 0.03초 => 0.6초
+				PLAYER:builder_MakeRecipeBy(bufaction.recipe)
+			end 
+		elseif bufaction.action == ACTIONS.EQUIP then
+			PLAYER:inventory_UseItemFromInvTile(bufaction.invobject)
+			self.passtime = 10 -- 10 * 0.03초 => 0.3초
+			return
+		elseif bufaction.action == ACTIONS.DEPLOY then 
+			local act = bufaction
 
-    print("auto_chores", bufaction)
-    if bufaction == nil then 
-      auto_chores:StopLoop() 
-    else
-      if bufaction.action == ACTIONS.BUILD  then
-        if not PLAYER:builder_IsBusy() then
-          self.passtime = 20 -- 20 * 0.03초 => 0.6초
-          PLAYER:builder_MakeRecipeBy(bufaction.recipe)
-        end 
-      elseif bufaction.action == ACTIONS.EQUIP then
-        PLAYER:inventory_UseItemFromInvTile(bufaction.invobject)
-          self.passtime = 10 -- 10 * 0.03초 => 0.3초
-          return
-        elseif bufaction.action == ACTIONS.DEPLOY then 
-        local act = bufaction
-        
-       local pos = bufaction.pos
---       print("Position:",pos)
-       local seed = act.invobject
---       print("Item:",seed)
-       if( GLOBAL.TheWorld.Map:CanDeployPlantAtPoint(pos, seed) ) then
---			if letsDoDebug then print("Planting plant") end
-			if( self.ismastersim ) then
-				local act = BufferedAction( self.inst, nil, ACTIONS.DEPLOY, seed, pos, nil )
-				self.inst.components.locomotor:PushAction(act,true)
-			else
-				local act = BufferedAction( self.inst, nil, ACTIONS.DEPLOY, seed, pos, nil )
-				act.preview_cb = function()
-					--SendRPCToServer(RPC.RightClick, act.action.code, pos.x, pos.z, act.target, false, controlmods, nil, act.action.mod_name)
-					SendRPCToServer(RPC.ControllerActionButtonDeploy, seed, pos.x, pos.z)
-				end
+			local pos = bufaction.pos
+			local obj = act.invobject
+			if( GLOBAL.TheWorld.Map:CanDeployPlantAtPoint(pos, obj) ) then
+			print("1")
+			    if self.locomotor == nil then
+			    	print("locomotor is null withing if")
+			       	self.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
+           			SendRPCToServer(RPC.ControllerActionButtonDeploy, obj, act.pos.x, act.pos.z, act.rotation ~= 0 and act.rotation or nil)
+       			elseif self:CanLocomote() then
+       				print("can locomote")
+           			act.preview_cb = function()
+					   self.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
+					   local isreleased = not TheInput:IsControlPressed(CONTROL_CONTROLLER_ACTION)
+					   SendRPCToServer(RPC.ControllerActionButtonDeploy, obj, act.pos.x, act.pos.z, act.rotation ~= 0 and act.rotation or nil, isreleased)
+           			end
+       			end
+			
+			
+			
+--						if letsDoDebug then print("Planting plant") end
+--			if( self.ismastersim ) then
+--				local act = BufferedAction( self.inst, nil, ACTIONS.DEPLOY, obj, pos, nil )
+--				self.inst.components.locomotor:PushAction(act,true)
+--			else
+--					local act = BufferedAction( self.inst, nil, ACTIONS.DEPLOY, obj, pos, nil )
+--					act.preview_cb = function()
+--						SendRPCToServer(RPC.RightClick, act.action.code, pos.x, pos.z, act.target, false, controlmods, nil, act.action.mod_name)
+--						SendRPCToServer(RPC.ControllerActionButtonDeploy, obj, pos.x, pos.z)
+--						print("callback sent")
+--					end
+--					
+--							print("command issued ")
+--							print(act)
+--			end
+--		return
 				self:DoAction(act)
 			end
-			return
+			--      end
 		end
-      end
     end
     return bufaction 
   end
@@ -448,7 +475,7 @@ function AutoChores:GetMinerAction()--actions for mining
       if item == nil then return false end
       if self.task_flag["nitre"] == true and item.prefab == "rock1" then return true end 
       if self.task_flag["goldnugget"] == true and item.prefab == "rock2" then return true end 
-      if self.task_flag["ice"] == true and item.prefab == "rock_ice" and item.components.workable:CanBeWorked() then print("workable:",item," ? ",item.components.workable:CanBeWorked()) return true end 
+      if self.task_flag["ice"] == true and item.prefab == "rock_ice" and item.components.workable:CanBeWorked() then  return true end --print("workable:",item," ? ",item.components.workable:CanBeWorked())
       if item.prefab == "rock_flintless" then return true end 
       return false
 
@@ -564,7 +591,7 @@ function AutoChores:GetPlanterAction()
       for k, placer in pairs(self.task_placer) do
         local pos = placer:GetPosition()
         if Inst(seed):inventoryitem_CanDeploy(pos) then
-        	print("can deploy")
+--        	print("can deploy")
         	local act = BufferedAction( self.inst, nil, ACTIONS.DEPLOY, seed, pos, nil )
             return act --BufferedAction(self.inst, nil, ACTIONS.DEPLOY, item, pos)
         end
