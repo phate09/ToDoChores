@@ -69,10 +69,16 @@ Planned Changes and ideas
 
 Changes Log
 ------------------------
+1.1.0
+	Added in-game menu that allows to change options
+	Fixed error with ice
+	Added support for twiggy trees
+	
 1.0.1
 	Solved teleport bug when pressing N
 	Reduced radius at which to dig stumps
 	Added Ice as a an option in the "Dig" row
+	
 1.0
 	Solved issue with planting when the user was not the host of the server (FINALLY!)
 0.7
