@@ -1,11 +1,8 @@
 local Widget = require "widgets/widget"
 local ImageButton = require "widgets/imagebutton"
 local Image = require "widgets/image"
---local BadgeWheel = require("chores-lib.badgewheel") 
---local CountDown = require("chores-lib.countdown") 
 local Inst = require "chores-lib.instance" 
---package.path = package.path .. ";../?.lua"
---local Main  = require "../modmain"
+local modname = KnownModIndex:GetModActualName("To Do Chores [Forked]")
 local CONFIG
 
 CW = nil
@@ -13,13 +10,11 @@ CW = nil
 local PLACER_GAP = {
   pinecone = 2,
   acorn = 2,
+  twiggy_nut=2,
   dug_grass = 1,
   dug_berrybush = 2,
   dug_sapling = 1
 }
-local function IMS( plyctrl )
-	return plyctrl.ismastersim
-end
 local ATLASINV = "images/inventoryimages.xml"
 local MAX_HUD_SCALE = 1.25
 local ChoresWheel = Class(Widget, function(self)
@@ -48,7 +43,7 @@ local ChoresWheel = Class(Widget, function(self)
     pickaxe = { nitre = false, goldnugget = true, ice=false},
     shovel = { dug_grass = true, dug_berrybush = true, dug_sapling = true},
     backpack = { cutgrass = true, berries = true, twigs = true, flint = true, green_cap = false, carrot = false, petals = false},
-    book_gardening = { dug_grass = true, dug_berrybush = false, dug_sapling = false, pinecone = false, acorn=false}
+    book_gardening = { dug_grass = true, dug_berrybush = false, dug_sapling = false, pinecone = false, acorn=false, twiggy_nut=false}
   }
 
   self.layout ={
@@ -56,7 +51,7 @@ local ChoresWheel = Class(Widget, function(self)
     {"pickaxe", "nitre","goldnugget","ice"},
     {"backpack", "flint", "cutgrass", "twigs", "berries","green_cap", "carrot", "petals"},
     {"shovel", "dug_grass", "dug_berrybush", "dug_sapling"},
-    {"book_gardening", "dug_grass", "dug_berrybush", "dug_sapling", "pinecone","acorn"}
+    {"book_gardening", "dug_grass", "dug_berrybush", "dug_sapling", "pinecone","acorn","twiggy_nut"}
   }
 
 
@@ -127,6 +122,8 @@ function ChoresWheel:Toggle()--toggle visibility of the widget
   else
     self:Show()
   end
+  print("TheNet:GetIsServer():"..tostring(TheNet:GetIsServer()))
+  print("TheNet:GetIsClient():"..tostring(TheNet:GetIsClient()))
 end
 function ChoresWheel:MakeBtn(task, icon)--creates a button
   local btn =  self.root:AddChild(ImageButton(ATLASINV, icon .. ".tex"))
@@ -223,12 +220,11 @@ function ChoresWheel:BtnGainFocus(task, icon) --on the focus of planting display
 
     self:StartUpdating()
 
-	--load from config
-	--local modnameFancy = "To Do Chores [Forked]"
---	local modnameActual = KnownModIndex:GetModActualName(modnameFancy)
-	print("showing "..CONFIG.ac_planting_x.."x"..CONFIG.ac_planting_y.." grid")
-    for xOff = 0, CONFIG.ac_planting_x-1, 1 do
-      for zOff = 0, CONFIG.ac_planting_y-1, 1 do 
+  local planting_x=GetModConfigData("planting_x",modname)
+  local planting_y=GetModConfigData("planting_y",modname)
+	print("showing "..planting_x.."x"..planting_y.." grid")
+    for xOff = 0, planting_x-1, 1 do
+      for zOff = 0, planting_y-1, 1 do 
         local deployplacer = SpawnPrefab(placer_name)
         table.insert( self.placers, deployplacer)  
         deployplacer.components.placer:SetBuilder(ThePlayer, nil, placer_item)

@@ -1,7 +1,7 @@
 name = "To Do Chores [Forked]"
 description = "Automate gathering, chopping, digging and planting!"
 author = "phate09"
-version = "1.0.1"
+version = "1.1.0"
 
 forumthread = ""
 
@@ -53,12 +53,15 @@ configuration_options =
     hover="Changing this from in-game won't work. Sorry.",
   }, 
   {
-    name = "dummyvalue",
-    label = "",
-    longlabel="",
-    options = {},
---    default = "V",
---    hover="Changing this from in-game won't work. Sorry.",
+    name = "cut_adult_tree_only",
+    label = "(S)Cut only adult trees",
+    longlabel="(S)Cut only adult trees to maximise cones yeld",
+    options={
+			{description="No", data=0},
+			{description="Yes", data=1}
+		},
+	 default=0,
+   hover="It will only work if you are the host of the server",
   }, 
   {
     name = "planting_x",
