@@ -1,5 +1,5 @@
 name = "To Do Chores [Forked]"
-description = "Automate gathering, chopping, digging and planting!"
+description = "Automate gathering, chopping, digging and planting!\n v1.1"
 author = "phate09"
 version = "1.1.0"
 

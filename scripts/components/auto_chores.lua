@@ -402,11 +402,11 @@ function AutoChores:GetLumberJackAction()--actions for chopping
     --    print("Cut adult trees:"..tostring(cut_adult_trees_only==1))
     local choice=item:HasTag("tree")
     if(cut_adult_trees_only==1) then
---      print("item.components.growable:"..tostring(item.components.growable))
---      print("item:HasTag(barren):"..tostring(item:HasTag("barren")))
---      if (item.components.growable~=nil) then print("item.components.growable.stage:"..tostring(item.components.growable.stage)) end
-        choice=choice and item:HasTag("barren")==false
---        print("choice:"..tostring(choice))
+      --      print("item.components.growable:"..tostring(item.components.growable))
+      --      print("item:HasTag(barren):"..tostring(item:HasTag("barren")))
+      --      if (item.components.growable~=nil) then print("item.components.growable.stage:"..tostring(item.components.growable.stage)) end
+      choice=choice and item:HasTag("barren")==false
+      --        print("choice:"..tostring(choice))
       if(TheNet:GetIsServer()) then
         choice=choice and item:HasTag("barren")==false and item.components.growable ~= nil and item.components.growable.stage == 3
       end
@@ -469,10 +469,17 @@ function AutoChores:GetMinerAction()--actions for mining
     local target = FindEntity(self.inst, SEE_DIST_WORK_TARGET, function (item)
 
         if item == nil then return false end
-        if not (item.components.workable ~= nil and item.components.workable.action == ACTIONS.MINE and item.components.workable:CanBeWorked()) then return false end
+        --        if not (TheNet:GetIsServer() and item.components.workable ~= nil and item.components.workable:CanBeWorked() and item.components.workable.action == ACTIONS.MINE) then print("condition 1") return false end--and ( or TheNet:GetIsClient())
+        if TheNet:GetIsServer() and not (item.components.workable ~= nil and item.components.workable:CanBeWorked() and item.components.workable.action == ACTIONS.MINE) then
+--            print("condition 1")
+            return false
+          end
         if self.task_flag["nitre"] == true and item.prefab == "rock1" then return true end
         if self.task_flag["goldnugget"] == true and item.prefab == "rock2" then return true end
-        if self.task_flag["ice"] == true and item.prefab == "rock_ice" then  return true end --print("workable:",item," ? ",item.components.workable:CanBeWorked())
+        if self.task_flag["ice"] == true and item.prefab == "rock_ice" then
+--          print("rock_ice")
+          return true
+        end --print("workable:",item," ? ",item.components.workable:CanBeWorked())
         if item.prefab == "rock_flintless" then return true end
         return false
 
