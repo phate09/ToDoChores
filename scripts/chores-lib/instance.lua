@@ -33,7 +33,7 @@ function Inst:equippable()
     return self.inst.replica.equippable
 end
 function Inst:equippable_EquipSlot()
-    return self.inst.replica.equippable:EquipSlot()  
+    return self.inst.replica.equippable:EquipSlot()
 end
 
 function Inst:health_Max()
@@ -44,29 +44,29 @@ function Inst:health_Current()
 end
 
 function Inst:inventory_GetEquippedItem(slot)
-    return self.inst.replica.inventory:GetEquippedItem(slot)  
+    return self.inst.replica.inventory:GetEquippedItem(slot)
 end
-function Inst:inventory_GetAllItems() 
+function Inst:inventory_GetAllItems()
   local items = {}
-  for k,v in pairs(self:inventory_GetItems()) do table.insert(items, v) end 
-  for k,v in pairs(self:inventory_GetEquips()) do table.insert(items, v) end  
+  for k,v in pairs(self:inventory_GetItems()) do table.insert(items, v) end
+  for k,v in pairs(self:inventory_GetEquips()) do table.insert(items, v) end
 
   local overflow = self:inventory_GetOverflowContainer()
-  if overflow ~= nil then  
-    if overflow.slots then 
-      for k,v in pairs(overflow.slots) do table.insert(items, v) end  
-    else 
-      for k,v in pairs(overflow:GetItems()) do table.insert(items, v) end  
-    end  
+  if overflow ~= nil then
+    if overflow.slots then
+      for k,v in pairs(overflow.slots) do table.insert(items, v) end
+    else
+      for k,v in pairs(overflow:GetItems()) do table.insert(items, v) end
+    end
   end
-  return items 
+  return items
 end
-function Inst:inventory_FindItems(fn) 
+function Inst:inventory_FindItems(fn)
     local items = self:inventory_GetAllItems()
-    local result = {} 
+    local result = {}
     for k,v in pairs(items) do
-      if fn(v) then 
-        table.insert(result, v) 
+      if fn(v) then
+        table.insert(result, v)
       end
     end
     return result
@@ -81,48 +81,48 @@ function Inst:inventory_ReturnActiveItem()
 end
 
 function Inst:inventory_TakeActiveItemFromAllOfSlot(fn)
-  for k,v in pairs(self:inventory_GetItems()) do 
-    if fn(v) then 
-      self.inst.replica.inventory:TakeActiveItemFromAllOfSlot(k)
-      return 
-    end   
-  end 
-  for k,v in pairs(self:inventory_GetEquips()) do
-    if fn(v) then 
+  for k,v in pairs(self:inventory_GetItems()) do
+    if fn(v) then
       self.inst.replica.inventory:TakeActiveItemFromAllOfSlot(k)
       return
-    end   
-  end   
+    end
+  end
+  for k,v in pairs(self:inventory_GetEquips()) do
+    if fn(v) then
+      self.inst.replica.inventory:TakeActiveItemFromAllOfSlot(k)
+      return
+    end
+  end
 
   local overflow = self:inventory_GetOverflowContainer()
   if overflow ~= nil then
-    local items = nil  
-    if overflow.slots ~= nil then 
+    local items = nil
+    if overflow.slots ~= nil then
       items = overflow.slots
-    else 
+    else
       items = overflow:GetItems()
-    end  
+    end
 
-    for k,v in pairs(items) do 
+    for k,v in pairs(items) do
       if fn(v) then
         overflow:TakeActiveItemFromAllOfSlot(k)
+        return
       end
-    end  
-    
+    end
   end
 end
 
 function Inst:inventory_UseItemFromInvTile(item)
-    return self.inst.replica.inventory:UseItemFromInvTile(item)  
+    return self.inst.replica.inventory:UseItemFromInvTile(item)
 end
 function Inst:inventory_GetItems()
-    return self.inst.replica.inventory:GetItems()  
+    return self.inst.replica.inventory:GetItems()
 end
 function Inst:inventory_GetEquips()
-    return self.inst.replica.inventory:GetEquips()  
+    return self.inst.replica.inventory:GetEquips()
 end
 function Inst:inventory_GetOverflowContainer()
-    return self.inst.replica.inventory:GetOverflowContainer()  
+    return self.inst.replica.inventory:GetOverflowContainer()
 end
 
 function Inst:inventoryitem()
