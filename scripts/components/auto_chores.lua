@@ -1,10 +1,100 @@
-
 local GLOBAL
 local CONFIG
 local Inst = require "chores-lib.instance"
 local PrefabLibary = require("chores-lib.prefablibrary")
 local modname = KnownModIndex:GetModActualName("To Do Chores [Forked]")
 
+local adultTreeAnims = {
+  "idle_tall",
+  "sway1_loop_tall",
+  "sway2_loop_tall",
+  "swayfx_tall",
+}
+
+local lumberPickup = {
+  log = true,
+  twigs = true,
+  charcoal = "charcoal",
+  pinecone = "pinecone",
+  acorn = "pinecone",
+  twiggy_nut = "pinecone",
+}
+
+local minerPickup = {
+  flint = true,
+  rocks = true,
+  nitre = "nitre",
+  goldnugget = "goldnugget",
+  ice = "ice",
+  moonrocknugget = "moonrocknugget",
+}
+
+local minerMine = {
+  rock1 = "nitre",
+  rock2 = "goldnugget",
+  rock_ice = "ice",
+  rock_moon = "moonrocknugget",
+  rock_flintless = "rocks",
+}
+
+local collectorPickup = {
+  flint = "flint",
+  carrot = "carrot",
+  petals = "petals",
+  green_cap = "green_cap",
+  red_cap = "green_cap",
+  blue_cap = "green_cap",
+  cutgrass = "cutgrass",
+  twigs = "twigs",
+  berries = "berries",
+  berries_juicy = "berries",
+}
+
+local collectorPick = {
+  carrot_planted = "carrot",
+  flower = "petals",
+  planted_flower = "petals",
+  flower_rose = "petals",
+  green_mushroom = "green_cap",
+  red_mushroom = "green_cap",
+  blue_mushroom = "green_cap",
+  grass = "cutgrass",
+  sapling = "twigs",
+  berrybush = "berries",
+  berrybush2 = "berries",
+  berrybush_juicy = "berries",
+}
+
+local diggerPickup = {
+  dug_grass = "dug_grass",
+  cutgrass = "dug_grass",
+  dug_berrybush = "dug_berrybush",
+  dug_berrybush2 = "dug_berrybush",
+  dug_berrybush_juicy = "dug_berrybush",
+  berries = "dug_berrybush",
+  berries_juicy = "dug_berrybush",
+  dug_sapling = "dug_sapling",
+  twigs = "dug_sapling",
+}
+
+local diggerDig = {
+  grass = "dug_grass",
+  berrybush = "dug_berrybush",
+  berrybush2 = "dug_berrybush",
+  berrybush_juicy = "dug_berrybush",
+  sapling = "dug_sapling",
+}
+
+local planterDeploy = {
+  dug_grass = "dug_grass",
+  dug_berrybush = "dug_berrybush",
+  dug_berrybush2 = "dug_berrybush",
+  dug_berrybush_juicy = "dug_berrybush",
+  dug_sapling = "dug_sapling",
+  pinecone = "pinecone",
+  acorn = "acorn",
+  twiggy_nut = "twiggy_nut",
+}
 
 local ChoreLib = PrefabLibary(function (proto)
   local stat = {}
@@ -71,10 +161,8 @@ function AutoChores:SetTask(task, flag, placer)
 end
 function AutoChores:ForceStop()
   -- body
-  if self.inst.components.locomotor ~=nil then
+  if self.inst.components.locomotor then
     self.inst.components.locomotor:Clear()
-  else
-    print("Locomotor is nil")
   end
   self:StopLoop()
 end
@@ -91,7 +179,7 @@ end
 
 function AutoChores:StopLoop()
   print("StopLoop")
-  if self.task ~= nil then
+  if self.task then
     self.task = nil
     self:ClearPlacer()
   end
@@ -127,21 +215,20 @@ function AutoChores:OverridePC()--player controller
   local PLAYER = Inst(self.inst)
   local pc = self.inst.components.playercontroller
 
-
-
   local _fnOrig =  pc.GetActionButtonAction
   local function _fnOver(self, force_target)
 
     if auto_chores.task == nil then return _fnOrig(self, force_target) end
 
     --Don't want to spam the action button before the server actually starts the buffered action
-    if not self.ismastersim and (self.remote_controls[CONTROL_ACTION] or 0) > 0 then
+    --Also check if playercontroller is enabled
+    --Also check if force_target is still valid
+    if (not self.ismastersim and (self.remote_controls[CONTROL_ACTION] or 0) > 0) or
+      not self:IsEnabled() or
+      (force_target ~= nil and (not force_target.entity:IsVisible() or force_target:HasTag("INLIMBO") or force_target:HasTag("NOCLICK"))) then
+      --"DECOR" should never change, should be safe to skip that check
       return
     end
-    if not self:IsEnabled() then
-      return
-    end
-
 
     local isdoing, isworking
     if self.inst.sg == nil then
@@ -163,42 +250,36 @@ function AutoChores:OverridePC()--player controller
     end
 
     local bufaction = auto_chores:GetAction()
-    if bufaction~=nil then
-      --    print("auto_chores", bufaction)
-      if bufaction == nil then
-        auto_chores:StopLoop()
-      else
-        if bufaction.action == ACTIONS.BUILD  then
-          if not PLAYER:builder_IsBusy() then
-            self.passtime = 20 -- 20 * 0.03초 => 0.6초
-            PLAYER:builder_MakeRecipeBy(bufaction.recipe)
-          end
-        elseif bufaction.action == ACTIONS.EQUIP then
-          PLAYER:inventory_UseItemFromInvTile(bufaction.invobject)
-          self.passtime = 10 -- 10 * 0.03초 => 0.3초
-          return
-        elseif bufaction.action == ACTIONS.DEPLOY then
-          local act = bufaction
-
-          local pos = bufaction.pos
-          local obj = act.invobject
-          if( GLOBAL.TheWorld.Map:CanDeployPlantAtPoint(pos, obj) ) then
-            --				print("1")
-            if self.locomotor == nil then
-              --						print("locomotor is null withing if")
-              self.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
-              SendRPCToServer(RPC.ControllerActionButtonDeploy, obj, act.pos.x, act.pos.z, act.rotation ~= 0 and act.rotation or nil)
-            elseif self:CanLocomote() then
-              --						print("can locomote")
-              act.preview_cb = function()
-                self.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
-                local isreleased = not TheInput:IsControlPressed(CONTROL_CONTROLLER_ACTION)
-                SendRPCToServer(RPC.ControllerActionButtonDeploy, obj, act.pos.x, act.pos.z, act.rotation ~= 0 and act.rotation or nil, isreleased)
-              end
-            end
-            self:DoAction(act)
-          end
+    if bufaction == nil then
+      auto_chores:StopLoop()
+    else
+      if bufaction.action == ACTIONS.BUILD  then
+        if not PLAYER:builder_IsBusy() then
+          self.passtime = 20 -- 20 * 0.03초 => 0.6초
+          PLAYER:builder_MakeRecipeBy(bufaction.recipe)
         end
+      elseif bufaction.action == ACTIONS.EQUIP then
+        PLAYER:inventory_UseItemFromInvTile(bufaction.invobject)
+        self.passtime = 10 -- 10 * 0.03초 => 0.3초
+        return
+      elseif bufaction.action == ACTIONS.DEPLOY then
+        local act = bufaction
+        local obj = act.invobject
+
+        if( GLOBAL.TheWorld.Map:CanDeployPlantAtPoint(act.pos, obj) ) then
+          if self.locomotor == nil then
+            self.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
+            SendRPCToServer(RPC.ControllerActionButtonDeploy, obj, act.pos.x, act.pos.z, act.rotation ~= 0 and act.rotation or nil)
+          elseif self:CanLocomote() then
+            act.preview_cb = function()
+              self.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
+              local isreleased = true
+              SendRPCToServer(RPC.ControllerActionButtonDeploy, obj, act.pos.x, act.pos.z, act.rotation ~= 0 and act.rotation or nil, isreleased)
+            end
+          end
+          self:DoAction(act)
+        end
+        return -- Deploy Action need RPC instead of return bufaction
       end
     end
     return bufaction
@@ -331,6 +412,51 @@ function AutoChores:GetLumberJackAction()--actions for chopping
 
   local item = nil
 
+  local target = FindEntity(self.inst, SEE_DIST_LOOT, function (item)--see if it can find something to pick up
+    if item == nil then return false end
+    local result = lumberPickup[item.prefab] or false
+    if type(result) == "string" then return self.task_flag[result] else return result end
+  end)
+  if target then
+    return BufferedAction(self.inst, target, ACTIONS.PICKUP )--pick it up
+  end
+
+  if self.task_flag["shovel"] then
+    item = self:GetItem(_isDigger) --get the digger object
+
+    if item == nil then
+      local target = FindEntity(self.inst, SEE_DIST_LOOT, _isDigger)--find a digger on the ground
+      if target then
+        return BufferedAction(self.inst, target, ACTIONS.PICKUP )--pick it up
+      end
+
+      local use_gold_tools=(GetModConfigData("use_gold_tools",modname)==1)
+      local recipe = "shovel"
+      if use_gold_tools then recipe = "goldenshovel" end
+      if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+        return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
+      else
+        local recipe = "shovel"
+        if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+          return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
+        end
+      end
+    end
+
+    local digger = item
+
+    if digger  then
+      local target = FindEntity(self.inst, SEE_DIST_LOOT, nil, {"stump"})
+      if target then
+        if self:TestHandAction(_isDigger) == false then --if digger is not equipped
+          -- print("do Equip digger", digger)
+          return BufferedAction(self.inst, nil, ACTIONS.EQUIP, digger) --equip it
+        end
+        return BufferedAction(self.inst, target, ACTIONS.DIG, digger ) --otherwise dig the stump
+      end
+    end
+  end
+
   item = self:GetItem(_isChopper)
   if item == nil then
     local target = FindEntity(self.inst, SEE_DIST_LOOT, _isChopper)--if there is something that can chop on the ground
@@ -338,81 +464,44 @@ function AutoChores:GetLumberJackAction()--actions for chopping
       return BufferedAction(self.inst, target, ACTIONS.PICKUP )--pick it up
     end
 
+    local use_gold_tools=(GetModConfigData("use_gold_tools",modname)==1)
     local recipe = "axe"
-    if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then--if knows how to build an axe
-      return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1) --build it
+    if use_gold_tools then recipe = "goldenaxe" end
+    if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+      return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
+    else
+      local recipe = "axe"
+      if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+        return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
+      end
     end
     return nil
   end
   local chopper = item
 
-
-
-  item = self:GetItem(_isDigger)--get the digger object
-
-  -- print("finded digger = ", item)
-
-  if item == nil then
-    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isDigger)--find a digger on the ground
-    if target then
-      return BufferedAction(self.inst, target, ACTIONS.PICKUP )--pick it up
-    end
-
-    local recipe = "shovel"
-    if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then--build a shovel if knows how to build
-      return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
-    end
-  end
-
-  local digger = item
-
-  local target = FindEntity(self.inst, SEE_DIST_LOOT, function (item)--see if it can find something to pick up
-    if item == nil then return false end
-    if item.prefab == "log" then return true end
-    if self.task_flag["charcoal"] == true and item.prefab == "charcoal" then return true end
-    if self.task_flag["pinecone"] == true and (item.prefab == "pinecone" or item.prefab == "acorn" or item.prefab == "twiggy_nut")  then return true end --and item.issapling:value() == false
-    --if item.prefab == "acorn" then return true end -- this is Birchnut
-    return false
-  end)
-  if target then
-    return BufferedAction(self.inst, target, ACTIONS.PICKUP )--pick it up
-  end
-
-
-  if digger then
-    local target = FindEntity(self.inst, SEE_DIST_LOOT, function (item)--find a stump nearby
-      return item ~= nil and item:HasTag("stump")
-    end)
-    if target then
-      if self:TestHandAction(_isDigger) == false then --if digger is not equipped
-        -- print("do Equip digger", digger)
-        return BufferedAction(self.inst, nil, ACTIONS.EQUIP, digger) --equip it
-      end
-      return BufferedAction(self.inst, target, ACTIONS.DIG, digger ) --otherwise dig the stump
-    end
-  end
-
-
   local target = FindEntity(self.inst, SEE_DIST_WORK_TARGET, function (item)
+    local adult_trees_only=(GetModConfigData("cut_adult_tree_only",modname)==1)
     if item == nil then return false end
-    if item:HasTag("stump") then return false end
-    if self.task_flag["charcoal"] == false and item:HasTag("burnt") then return false end
-    local cut_adult_trees_only=GetModConfigData("cut_adult_tree_only",modname)
-    --    print("Value of config:"..tostring(cut_adult_trees_only))
-    --    print("Cut adult trees:"..tostring(cut_adult_trees_only==1))
-    local choice=item:HasTag("tree")
-    if(cut_adult_trees_only==1) then
-      --      print("item.components.growable:"..tostring(item.components.growable))
-      --      print("item:HasTag(barren):"..tostring(item:HasTag("barren")))
-      --      if (item.components.growable~=nil) then print("item.components.growable.stage:"..tostring(item.components.growable.stage)) end
-      choice=choice and item:HasTag("barren")==false
-      --        print("choice:"..tostring(choice))
-      if(TheNet:GetIsServer()) then
-        choice=choice and item:HasTag("barren")==false and item.components.growable ~= nil and item.components.growable.stage == 3
+    if not item:HasTag("tree") then return false end
+    if item:HasTag("burnt") then return self.task_flag["charcoal"] end
+
+    -- adult tree
+    if adult_trees_only then
+      local isadult=false
+      for ik, iv in ipairs(adultTreeAnims) do
+        if item.AnimState:IsCurrentAnimation(iv) then
+          --          print('isAdultTree: '..iv..", target:"..tostring(item))
+          if not isadult then isadult=true end
+        end
+      end
+      if not isadult then
+        return false
       end
     end
-    return choice --item:HasTag("tree") --and ((cut_adult_trees_only==0 or not item:HasTag("barren")) and item.components.growable ~= nil and item.components.growable.stage == 3)
-  end)
+
+    return true
+  end, {"CHOP_workable"})
+
   if target then
     if self:TestHandAction(_isChopper) == false then
       -- print("do Equip chopper", chopper)
@@ -420,17 +509,22 @@ function AutoChores:GetLumberJackAction()--actions for chopping
     end
     return BufferedAction(self.inst, target, ACTIONS.CHOP, chopper )
   end
-
-  -- -- print("target = ",  target)
-  -- if target then
-  --   local bufaction = BufferedAction(inst, target, ACTIONS.CHOP)
-
 end
 
 
 function AutoChores:GetMinerAction()--actions for mining
 
   local item = nil
+
+  --pickup target
+  local target = FindEntity(self.inst, SEE_DIST_LOOT, function (item)
+    if item == nil then return false end
+    local result = minerPickup[item.prefab] or false
+    if type(result) == "string" then return self.task_flag[result] else return result end
+  end)
+  if target then
+    return BufferedAction(self.inst, target, ACTIONS.PICKUP )
+  end
 
   item = self:GetItem(_isMiner)
   if item == nil then
@@ -439,51 +533,28 @@ function AutoChores:GetMinerAction()--actions for mining
       return BufferedAction(self.inst, target, ACTIONS.PICKUP )
     end
 
+
+    local use_gold_tools=(GetModConfigData("use_gold_tools",modname)==1)
     local recipe = "pickaxe"
+    if use_gold_tools then recipe = "goldenpickaxe" end
     if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
       return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
+    else
+      local recipe = "pickaxe"
+      if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+        return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
+      end
     end
     return nil
   end
   local minner = item
-
-
-  --pickup target
-  local target = FindEntity(self.inst, SEE_DIST_LOOT, function (item)
-    if item == nil then return false end
-    if self.task_flag["nitre"] == true and item.prefab == "nitre" then return true end
-    if self.task_flag["goldnugget"] == true and item.prefab == "goldnugget" then return true end
-    if self.task_flag["ice"] == true and item.prefab == "ice" then return true end
-    if item.prefab == "flint" then return true end
-    if item.prefab == "rocks" then return true end
-    return false
-  end)
-  if target then
-    return BufferedAction(self.inst, target, ACTIONS.PICKUP )
-  end
-
-
-
   --miner target
   if minner then
     local target = FindEntity(self.inst, SEE_DIST_WORK_TARGET, function (item)
-
-        if item == nil then return false end
-        --        if not (TheNet:GetIsServer() and item.components.workable ~= nil and item.components.workable:CanBeWorked() and item.components.workable.action == ACTIONS.MINE) then print("condition 1") return false end--and ( or TheNet:GetIsClient())
-        if TheNet:GetIsServer() and not (item.components.workable ~= nil and item.components.workable:CanBeWorked() and item.components.workable.action == ACTIONS.MINE) then
---            print("condition 1")
-            return false
-          end
-        if self.task_flag["nitre"] == true and item.prefab == "rock1" then return true end
-        if self.task_flag["goldnugget"] == true and item.prefab == "rock2" then return true end
-        if self.task_flag["ice"] == true and item.prefab == "rock_ice" then
---          print("rock_ice")
-          return true
-        end --print("workable:",item," ? ",item.components.workable:CanBeWorked())
-        if item.prefab == "rock_flintless" then return true end
-        return false
-
-    end)
+      if item == nil then return false end
+      local result = minerMine[item.prefab] or false
+      if type(result) == "string" then return self.task_flag[result] else return result end
+    end, "MINE_workable")
     if target then
       if self:TestHandAction(_isMiner) == false then
         -- print("do Equip digger", digger)
@@ -499,26 +570,21 @@ end
 function AutoChores:GetCollectorAction()
   local target = FindEntity(self.inst, SEE_DIST_WORK_TARGET, function (item)
     if item == nil then return false end
-    if self.task_flag["flint"] == true and item.prefab == "flint" then return true end
-    if self.task_flag["carrot"] == true and (item.prefab == "carrot" or item.prefab == "carrot_planted") then return true end
-    if self.task_flag["petals"] == true and (item.prefab == "flower" or item.prefab == "petals" or item.prefab == "planted_flower") then return true end
-    if self.task_flag["green_cap"] == true and (
-      (
-      (item.prefab == "green_mushroom" or item.prefab == "red_mushroom" or item.prefab == "blue_mushroom") and item:HasTag("pickable")
-      ) or (
-      item.prefab == "green_cap" or item.prefab == "red_cap" or item.prefab == "blue_cap"
-      )
-      ) then return true end
-    if self.task_flag["cutgrass"] == true and item.prefab == "grass" and item:HasTag("pickable") then return true end
-    if self.task_flag["twigs"] == true and ((item.prefab == "sapling" and item:HasTag("pickable")) or item.prefab=="twigs")  then return true end
-    if self.task_flag["berries"] == true and (item.prefab == "berrybush" or item.prefab == "berrybush2" or item.prefab == "berrybush_juicy") and item:HasTag("pickable") then return true end
-    return false
+    if item:HasTag("pickable") then
+      -- pickable
+      local result = collectorPick[item.prefab] or false
+      if type(result) == "string" then return self.task_flag[result] else return result end
+    else
+      -- pickup
+      local result = collectorPickup[item.prefab] or false
+      if type(result) == "string" then return self.task_flag[result] else return result end
+    end
   end)
   if target then
-    if target.prefab == "flint" or target.prefab == "berries_juicy" or target.prefab == "berries" or target.prefab == "carrot" or target.prefab == "green_cap" or target.prefab == "red_cap" or target.prefab == "blue_cap" or target.prefab=="twigs" then
-      return BufferedAction(self.inst, target, ACTIONS.PICKUP )
-    else
+    if target:HasTag("pickable") then
       return BufferedAction(self.inst, target, ACTIONS.PICK )
+    else
+      return BufferedAction(self.inst, target, ACTIONS.PICKUP )
     end
   end
 end
@@ -527,13 +593,8 @@ end
 function AutoChores:GetDiggerAction()
   local target = FindEntity(self.inst, SEE_DIST_LOOT, function (item)
     if item == nil then return false end
-    if self.task_flag["dug_grass"] == true and item.prefab == "cutgrass" then return true end
-    if self.task_flag["dug_grass"] == true and item.prefab == "dug_grass" then return true end
-    if self.task_flag["dug_berrybush"] == true and (item.prefab == "berries" or item.prefab == "berries_juicy") then return true end
-    if self.task_flag["dug_berrybush"] == true and ( item.prefab == "dug_berrybush" or item.prefab == "dug_berrybush2" or item.prefab == "dug_berrybush_juicy") then return true end
-    if self.task_flag["dug_sapling"] == true and item.prefab == "twigs" then return true end
-    if self.task_flag["dug_sapling"] == true and item.prefab == "dug_sapling" then return true end
-    return false
+    local result = diggerPickup[item.prefab] or false
+    if type(result) == "string" then return self.task_flag[result] else return result end
   end)
   if target then
     return BufferedAction(self.inst, target, ACTIONS.PICKUP )
@@ -547,29 +608,31 @@ function AutoChores:GetDiggerAction()
       return BufferedAction(self.inst, target, ACTIONS.PICKUP )
     end
 
+    local use_gold_tools=(GetModConfigData("use_gold_tools",modname)==1)
     local recipe = "shovel"
+    if use_gold_tools then recipe = "goldenshovel" end
     if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
       return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
+    else
+      local recipe = "shovel"
+      if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+        return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
+      end
     end
   end
 
   local digger = item
-  -- print("digger = ", digger)
 
   if digger then
     local target = FindEntity(self.inst, SEE_DIST_WORK_TARGET, function (item)
       if item == nil then return false end
-      if item:HasTag("barren") then return false end
-      if self.task_flag["dug_grass"] == true and item.prefab == "grass" then return true end
-      if self.task_flag["dug_berrybush"] == true and ( item.prefab == "berrybush" or item.prefab == "berrybush2" or item.prefab == "berrybush_juicy") then return true end
-      if self.task_flag["dug_sapling"] == true and item.prefab == "sapling" then return true end
-      return false
-    end)
+      local result = diggerDig[item.prefab] or false
+      if type(result) == "string" then return self.task_flag[result] else return result end
+    end, {"DIG_workable"})
 
     -- print("target = ", target)
     if target then
       if self:TestHandAction(_isDigger) == false then
-        print("do Equip digger", digger)
         return BufferedAction(self.inst, nil, ACTIONS.EQUIP, digger)
       end
       return BufferedAction(self.inst, target, ACTIONS.DIG, digger )
@@ -583,20 +646,15 @@ function AutoChores:GetPlanterAction()
   local seed = self:GetItem(--self:CustomFindItems(self.inst, self:GetInventory(self.inst),
     function (item)
       if item == nil then return false end
-      if self.task_flag["dug_grass"] == true and item.prefab == "dug_grass" then return true end
-      if self.task_flag["dug_berrybush"] == true and ( item.prefab == "dug_berrybush" or item.prefab == "dug_berrybush2" or item.prefab == "dug_berrybush_juicy") then return true end
-      if self.task_flag["dug_sapling"] == true and item.prefab == "dug_sapling" then return true end
-      if self.task_flag["pinecone"] == true and item.prefab == "pinecone" then return true end
-      if self.task_flag["acorn"] == true and item.prefab == "acorn" then return true end
-      if self.task_flag["twiggy_nut"] == true and item.prefab == "twiggy_nut" then return true end
-      return false
+      local result = planterDeploy[item.prefab] or false
+      if type(result) == "string" then return self.task_flag[result] else return result end
   end)
   if seed ~= nil then
     if self.task_placer ~= nil then
       for k, placer in pairs(self.task_placer) do
         local pos = placer:GetPosition()
         if Inst(seed):inventoryitem_CanDeploy(pos) then
-          --        	print("can deploy")
+          --          print("can deploy")
           local act = BufferedAction( self.inst, nil, ACTIONS.DEPLOY, seed, pos, nil )
           return act --BufferedAction(self.inst, nil, ACTIONS.DEPLOY, item, pos)
         end

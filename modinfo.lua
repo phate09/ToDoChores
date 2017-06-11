@@ -1,7 +1,7 @@
 name = "To Do Chores [Forked]"
-description = "Automate gathering, chopping, digging and planting!\n v1.1"
+description = "Automate gathering, chopping, digging and planting!\n v1.2"
 author = "phate09"
-version = "1.1.0"
+version = "1.2"
 
 forumthread = ""
 
@@ -53,15 +53,26 @@ configuration_options =
     hover="Changing this from in-game won't work. Sorry.",
   }, 
   {
+    name = "use_gold_tools",
+    label = "Use gold tools",
+    longlabel="When crafting new tools prefer tools made of gold",
+    options={
+      {description="No", data=0},
+      {description="Yes", data=1}
+    },
+   default=0,
+--   hover="It will only work if you are the host of the server",
+  },
+  {
     name = "cut_adult_tree_only",
-    label = "(S)Cut only adult trees",
-    longlabel="(S)Cut only adult trees to maximise cones yeld",
+    label = "Cut only adult trees",
+    longlabel="Cut only adult trees to maximise cones yeld",
     options={
 			{description="No", data=0},
 			{description="Yes", data=1}
 		},
 	 default=0,
-   hover="It will only work if you are the host of the server",
+--   hover="It will only work if you are the host of the server",
   }, 
   {
     name = "planting_x",
