@@ -1,6 +1,7 @@
 local GLOBAL
 local CONFIG
 local Inst = require "chores-lib.instance"
+local Inspect = require "inspect"
 local PrefabLibary = require("chores-lib.prefablibrary")
 local modname = KnownModIndex:GetModActualName("To Do Chores [Forked]")
 
@@ -189,7 +190,7 @@ function AutoChores:SetTask(task, flag, placer)
   self.task = task
   self.task_flag = flag
   self.task_placer = placer
-  print("SetTask", task, flag, placer)
+  --  print("SetTask", task, flag, placer)
 end
 function AutoChores:ForceStop()
   -- body
@@ -258,10 +259,10 @@ function AutoChores:OverridePC()--player controller
     --Also check if playercontroller is enabled
     --Also check if force_target is still valid
     if (not self.ismastersim and (self.remote_controls[CONTROL_ACTION] or 0) > 0) or
-        not self:IsEnabled() or
-        (force_target ~= nil and (not force_target.entity:IsVisible() or force_target:HasTag("INLIMBO") or force_target:HasTag("NOCLICK"))) then
-        --"DECOR" should never change, should be safe to skip that check
-        return
+      not self:IsEnabled() or
+      (force_target ~= nil and (not force_target.entity:IsVisible() or force_target:HasTag("INLIMBO") or force_target:HasTag("NOCLICK"))) then
+      --"DECOR" should never change, should be safe to skip that check
+      return
     end
 
     local isdoing, isworking
@@ -620,11 +621,20 @@ function AutoChores:GetMinerAction()--actions for mining
               return true
             end
           end
-        end
-        return false
+      end
+      return false
       else -- normal mine
         local result = minerMine[item.prefab] or false
-        if type(result) == "string" then return self.task_flag[result] else return result end
+        if item.prefab=="rock_ice" then
+          if item._stage:value()==1 then return false end
+        end
+        if type(result) == "string" then
+          if item.prefab=="rock_ice" and self.task_flag[result] then--to avoid mining empty ice
+            return item._stage:value()~=1--stage 1 is empty ice boulder
+          else
+            return self.task_flag[result]
+          end
+        else return result end
       end
     end, "MINE_workable")
     if target then
@@ -768,7 +778,7 @@ function AutoChores:GetFertilizeAction()
     end, nil, {"tree"}, {"withered", "barren"}) -- crop, grower, pickable
 
     if target then
-      print("fertilizer = " .. fertilizer.prefab, ", target = " .. target.prefab)
+      --      print("fertilizer = " .. fertilizer.prefab, ", target = " .. target.prefab)
       return BufferedAction( self.inst, target, ACTIONS.FERTILIZE, fertilizer)
     end
   end

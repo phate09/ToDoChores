@@ -21,6 +21,11 @@ How To Use
 3. Start Chores
 4. Don't Close Widget while do chores
 5. after task end (or when you want), close widget ( Key "V") 
+
+Open Mod in-game menu (default Key "O") for changing some options
+1. Size of the planting batch
+2. Chop down only adult trees
+3. Prefer tools made of gold when crafting new tools
  
 Widget Icon Explain
 -----------------------------
@@ -29,13 +34,15 @@ The other is option of chores.
 
 * Row 1. 
   * axe - chop down tree
-  * pine cone - toggle pick or not
-  * charcoal - toogle cut burnt and pick charcoal
+  * pine cone - toggle pick cones/acorns when finished cutting the trees
+  * charcoal - toogle cut burnt trees and pick charcoal
+  * shovel - toggle shovel stumps
 
 * Row 2
   * pickaxe - mining
-  * nitro - toggle mine and pick or not. it mean, if nitro icon is disabled then character didn't work with boulder because it loot nitro. also, character didn't pick nitro.
-  * gold - toggle mine and pick or not
+  * nitro - toggle mine nitro boulders
+  * gold - toggle mine gold boulders
+  * moonstone - toggle the option to mine moonstone
 
 * Row 3
   * backpack - collect items
@@ -56,19 +63,28 @@ The other is option of chores.
   * dug berry bush - same
   * dug saplings - same 
   * pine cone - same 
+  * twiggy cone - same
 
 Planned Changes and ideas
 ------------------------
-* In-game menu for configuration
-* Actions as checkboxes: the actions are going to be toggleable so that the character will perform any actions turned on. (Picking up carrots while shoveling saplings? Want to dig but not pick? etc)
-* Auto Fertilise action?
-* Auto Check traps?
-* Auto Cooking?
-* Auto dry meat?
-* Auto Harvest fields?
+* [X]In-game menu for configuration
+* [ ]Actions as checkboxes: the actions are going to be toggleable so that the character will perform any actions turned on. (Picking up carrots while shoveling saplings? Want to dig but not pick? etc)
+* [X]Auto Fertilise action
+* [ ]Auto Check traps?
+* [ ]Auto Cooking?
+* [ ]Auto dry meat?
+* [ ]Auto Harvest fields?
 
 Changes Log
 ------------------------
+1.3
+	Added option to auto-fertilise fields, it will build the bucket-o-poop if possible
+	Fixed error when mining ice
+1.2
+	Added option to cut only adult trees
+	Added option to prefer tools made of gold
+	Fixed planting
+	Added toggle button for shovelling trees
 1.1.0
 	Added in-game menu that allows to change options
 	Fixed error with ice

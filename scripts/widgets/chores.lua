@@ -242,7 +242,7 @@ end
 
 
 function ChoresWheel:DoTask(task)
-	print("do task"..task)
+--	print("do task"..task)
   --saves self.flags into flags
   local flags = {}
   for key, flag in pairs(self.flag[task]) do
