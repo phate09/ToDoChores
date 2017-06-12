@@ -64,6 +64,15 @@ The other is option of chores.
   * dug saplings - same 
   * pine cone - same 
   * twiggy cone - same
+  
+ * Row 6
+  * guano - fertilise crops
+  * poop - use poop to fertilise
+  * bucket-o-poop - use bucket or make one to fertilise
+  * guano - use guano to fertilise
+  * rot - same
+  * rotten eggs - same
+  * glommer goop - same
 
 Planned Changes and ideas
 ------------------------
