@@ -11,6 +11,12 @@ local adultTreeAnims = {
   "swayfx_tall",
 }
 
+local adultShrub = {
+  "idle_tall",
+  "mined_tall",
+  "hit_tall",
+}
+
 local lumberPickup = {
   log = true,
   twigs = true,
@@ -27,14 +33,24 @@ local minerPickup = {
   goldnugget = "goldnugget",
   ice = "ice",
   moonrocknugget = "moonrocknugget",
+  marble = "marble",
+  marblebean = "marble",
 }
 
 local minerMine = {
   rock1 = "nitre",
+  rock_petrified_tree = "nitre",
   rock2 = "goldnugget",
   rock_ice = "ice",
   rock_moon = "moonrocknugget",
   rock_flintless = "rocks",
+  marblepillar = "marble",
+  marbletree = "marble",
+  statueharp = "marble",
+  statue_marble = "marble",
+  sculpture_rookbody = "marble",
+  sculpture_bishopbody = "marble",
+  sculpture_knightbody = "marble",
 }
 
 local collectorPickup = {
@@ -48,6 +64,12 @@ local collectorPickup = {
   twigs = "twigs",
   berries = "berries",
   berries_juicy = "berries",
+  poop = "guano",
+  guano = "guano",
+  spoiled_food = "guano",
+  rottenegg = "guano",
+  fertilizer = "guano",
+  glommerfuel = "guano",
 }
 
 local collectorPick = {
@@ -94,6 +116,16 @@ local planterDeploy = {
   pinecone = "pinecone",
   acorn = "acorn",
   twiggy_nut = "twiggy_nut",
+  marblebean = "marblebean",
+}
+
+local fertilizeItem = {
+  poop = "poop",
+  guano = "poop",
+  spoiled_food = "spoiled_food",
+  rottenegg = "rottenegg",
+  fertilizer = "fertilizer",
+  glommerfuel = "glommerfuel",
 }
 
 local ChoreLib = PrefabLibary(function (proto)
@@ -195,6 +227,8 @@ function AutoChores:GetAction()
     return self:GetDiggerAction()
   elseif self.task == "book_gardening" then
     return self:GetPlanterAction()
+  elseif self.task == "guano" then
+    return self:GetFertilizeAction()
   end
 end
 
@@ -224,10 +258,10 @@ function AutoChores:OverridePC()--player controller
     --Also check if playercontroller is enabled
     --Also check if force_target is still valid
     if (not self.ismastersim and (self.remote_controls[CONTROL_ACTION] or 0) > 0) or
-      not self:IsEnabled() or
-      (force_target ~= nil and (not force_target.entity:IsVisible() or force_target:HasTag("INLIMBO") or force_target:HasTag("NOCLICK"))) then
-      --"DECOR" should never change, should be safe to skip that check
-      return
+        not self:IsEnabled() or
+        (force_target ~= nil and (not force_target.entity:IsVisible() or force_target:HasTag("INLIMBO") or force_target:HasTag("NOCLICK"))) then
+        --"DECOR" should never change, should be safe to skip that check
+        return
     end
 
     local isdoing, isworking
@@ -254,20 +288,27 @@ function AutoChores:OverridePC()--player controller
       auto_chores:StopLoop()
     else
       if bufaction.action == ACTIONS.BUILD  then
+
         if not PLAYER:builder_IsBusy() then
           self.passtime = 20 -- 20 * 0.03초 => 0.6초
           PLAYER:builder_MakeRecipeBy(bufaction.recipe)
         end
+
       elseif bufaction.action == ACTIONS.EQUIP then
+
         PLAYER:inventory_UseItemFromInvTile(bufaction.invobject)
         self.passtime = 10 -- 10 * 0.03초 => 0.3초
         return
+
       elseif bufaction.action == ACTIONS.DEPLOY then
+
         local act = bufaction
         local obj = act.invobject
 
         if( GLOBAL.TheWorld.Map:CanDeployPlantAtPoint(act.pos, obj) ) then
-          if self.locomotor == nil then
+          if self.ismastersim then
+            self.inst.components.combat:SetTarget(nil)
+          elseif self.locomotor == nil then
             self.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
             SendRPCToServer(RPC.ControllerActionButtonDeploy, obj, act.pos.x, act.pos.z, act.rotation ~= 0 and act.rotation or nil)
           elseif self:CanLocomote() then
@@ -279,7 +320,32 @@ function AutoChores:OverridePC()--player controller
           end
           self:DoAction(act)
         end
-        return -- Deploy Action need RPC instead of return bufaction
+        return -- DEPLOY Action need RPC instead of return bufaction
+
+      elseif bufaction.action == ACTIONS.FERTILIZE then
+
+        local act = bufaction
+        if self.ismastersim then
+          self.inst.components.combat:SetTarget(nil)
+        else
+          local mouseover = act.target
+          local position = mouseover:GetPosition()
+          local controlmods = nil
+          if self.locomotor == nil then
+            self.remote_controls[CONTROL_PRIMARY] = 0
+            SendRPCToServer(RPC.LeftClick, act.action.code, position.x, position.z, mouseover, nil, controlmods, act.action.canforce, act.action.mod_name)
+          elseif act.action ~= ACTIONS.WALKTO and self:CanLocomote() then
+            act.preview_cb = function()
+              self.remote_controls[CONTROL_PRIMARY] = 0
+              local isreleased = not TheInput:IsControlPressed(CONTROL_PRIMARY)
+              SendRPCToServer(RPC.LeftClick, act.action.code, position.x, position.z, mouseover, isreleased, controlmods, nil, act.action.mod_name)
+            end
+          end
+        end
+
+        self:DoAction(act)
+        return -- FERTILIZE Action need RPC instead of return bufaction
+
       end
     end
     return bufaction
@@ -487,16 +553,12 @@ function AutoChores:GetLumberJackAction()--actions for chopping
 
     -- adult tree
     if adult_trees_only then
-      local isadult=false
       for ik, iv in ipairs(adultTreeAnims) do
         if item.AnimState:IsCurrentAnimation(iv) then
-          --          print('isAdultTree: '..iv..", target:"..tostring(item))
-          if not isadult then isadult=true end
+          return true
         end
       end
-      if not isadult then
-        return false
-      end
+      return false
     end
 
     return true
@@ -533,7 +595,6 @@ function AutoChores:GetMinerAction()--actions for mining
       return BufferedAction(self.inst, target, ACTIONS.PICKUP )
     end
 
-
     local use_gold_tools=(GetModConfigData("use_gold_tools",modname)==1)
     local recipe = "pickaxe"
     if use_gold_tools then recipe = "goldenpickaxe" end
@@ -552,8 +613,19 @@ function AutoChores:GetMinerAction()--actions for mining
   if minner then
     local target = FindEntity(self.inst, SEE_DIST_WORK_TARGET, function (item)
       if item == nil then return false end
-      local result = minerMine[item.prefab] or false
-      if type(result) == "string" then return self.task_flag[result] else return result end
+      if item.prefab == "marbleshrub" then -- Marble Shrub
+        if self.task_flag["marble"] then
+          for ik, iv in ipairs(adultShrub) do
+            if item.AnimState:IsCurrentAnimation(iv) then
+              return true
+            end
+          end
+        end
+        return false
+      else -- normal mine
+        local result = minerMine[item.prefab] or false
+        if type(result) == "string" then return self.task_flag[result] else return result end
+      end
     end, "MINE_workable")
     if target then
       if self:TestHandAction(_isMiner) == false then
@@ -643,28 +715,65 @@ end
 
 function AutoChores:GetPlanterAction()
 
-  local seed = self:GetItem(--self:CustomFindItems(self.inst, self:GetInventory(self.inst),
-    function (item)
-      if item == nil then return false end
-      local result = planterDeploy[item.prefab] or false
-      if type(result) == "string" then return self.task_flag[result] else return result end
+  local seed = self:GetItem(function (item)
+    if item == nil then return false end
+    local result = planterDeploy[item.prefab] or false
+    if type(result) == "string" then return self.task_flag[result] else return result end
   end)
   if seed ~= nil then
     if self.task_placer ~= nil then
       for k, placer in pairs(self.task_placer) do
         local pos = placer:GetPosition()
         if Inst(seed):inventoryitem_CanDeploy(pos) then
-          --          print("can deploy")
-          local act = BufferedAction( self.inst, nil, ACTIONS.DEPLOY, seed, pos, nil )
-          return act --BufferedAction(self.inst, nil, ACTIONS.DEPLOY, item, pos)
+          return BufferedAction( self.inst, nil, ACTIONS.DEPLOY, seed, pos)
         end
       end
     end
   end
-
-  --  Inst(self.inst):inventory_ReturnActiveItem()
 end
 
+function AutoChores:GetFertilizeAction()
 
+  local function _isFertilizer(item)
+    if item == nil then return false end
+    local result = fertilizeItem[item.prefab] or false
+    if type(result) == "string" then return self.task_flag[result] else return result end
+  end
+
+  local fertilizer = self.INST:inventory_GetActiveItem()
+  if not _isFertilizer(fertilizer) then
+    self.INST:inventory_ReturnActiveItem()
+    self.INST:inventory_TakeActiveItemFromAllOfSlot(_isFertilizer)
+    fertilizer = self.INST:inventory_GetActiveItem()
+  end
+
+  if not _isFertilizer(fertilizer) then
+    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isFertilizer)
+    if target then
+      return BufferedAction(self.inst, target, ACTIONS.PICKUP )
+    end
+
+    local recipe = "fertilizer"
+    if self.task_flag[recipe] then
+      if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+        return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
+      end
+    end
+  end
+
+  if fertilizer ~= nil then
+    local target = FindEntity(self.inst, SEE_DIST_WORK_TARGET, function (item)
+      if item == nil then return false end
+      return true
+    end, nil, {"tree"}, {"withered", "barren"}) -- crop, grower, pickable
+
+    if target then
+      print("fertilizer = " .. fertilizer.prefab, ", target = " .. target.prefab)
+      return BufferedAction( self.inst, target, ACTIONS.FERTILIZE, fertilizer)
+    end
+  end
+  self.INST:inventory_ReturnActiveItem()
+
+end
 
 return AutoChores
