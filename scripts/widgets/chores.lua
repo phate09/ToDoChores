@@ -2,6 +2,7 @@ local Widget = require "widgets/widget"
 local ImageButton = require "widgets/imagebutton"
 local Image = require "widgets/image"
 local Inst = require "chores-lib.instance"
+local Inspect = require "inspect"
 local modname = KnownModIndex:GetModActualName("To Do Chores [Forked]")
 local CONFIG
 
@@ -27,10 +28,9 @@ local ChoresWheel = Class(Widget, function(self)
   self:SetMaxPropUpscale(MAX_HUD_SCALE)
 
   self.root = self:AddChild(Image("images/fepanels.xml","panel_mod1.tex"))
-
-  self.root:SetPosition(125, 100 + 60 * 6)
-  self.root:SetSize(25 + 50 * 9, 60 * 6)
   self.root:SetTint(1,1,1,0.5)
+
+  ThePlayer.Inspect = Inspect
 
   CW = self.root
 
@@ -40,7 +40,8 @@ local ChoresWheel = Class(Widget, function(self)
     shovel={ dug_grass=true, dug_berrybush=true, dug_sapling=true},
     backpack={ cutgrass=true, berries=true, twigs=true, flint=true, green_cap=false, carrot=true, petals=false, guano=true},
     book_gardening={ dug_grass=true, dug_berrybush=false, dug_sapling=false, pinecone=false, acorn=false, twiggy_nut=false, marblebean=false},
-    guano={poop=false, guano=false, spoiled_food=false, rottenegg=false, fertilizer=true, glommerfuel=false}
+    guano={poop=false, guano=false, spoiled_food=false, rottenegg=false, fertilizer=true, glommerfuel=false},
+    trap={rabbit=true, smallmeat=true, froglegs=true, silk=true, spidergland=true, monstermeat=true, spoiled_food=false}
   }
 
   self.layout ={
@@ -49,24 +50,30 @@ local ChoresWheel = Class(Widget, function(self)
     {"backpack", "flint", "cutgrass", "twigs", "berries","green_cap", "carrot", "petals", "guano"},
     {"shovel", "dug_grass", "dug_berrybush", "dug_sapling"},
     {"book_gardening", "dug_grass", "dug_berrybush", "dug_sapling", "pinecone","acorn","twiggy_nut", "marblebean"},
-    {"guano", "poop", "spoiled_food", "rottenegg", "fertilizer", "glommerfuel"}
+    {"guano", "poop", "spoiled_food", "rottenegg", "fertilizer", "glommerfuel"},
+    {"trap", "rabbit", "smallmeat", "froglegs", "silk", "spidergland", "monstermeat", "spoiled_food"}
   }
 
   self.root.btns = {}
 
-  local x,y = 0, 0
+  local x,y,rowcnt,colcnt = 0, 0, 0, 0
   for i, row in pairs(self.layout) do
+    if i > rowcnt then rowcnt = i end
     local task = row[1]
     self.root.btns[task] = {}
     for inx, icon in pairs(row) do
+      if inx > colcnt then colcnt = inx end
       local btn = self:MakeBtn(task, icon)
       btn:SetPosition( x, y)
-      x = x + 50
+      x = x + 45
       if inx == 1 then x = x + 25 end
     end
     y = y - 60
     x = 0
   end
+
+  self.root:SetPosition(125, 100 + 60 * rowcnt)
+  self.root:SetSize(25 + 45 * colcnt, 60 * rowcnt)
 
 end)
 function ChoresWheel:SetConfig(config)

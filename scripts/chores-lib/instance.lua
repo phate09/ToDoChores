@@ -138,5 +138,11 @@ function Inst:inventoryitem_GetDeployPlacerName()
     return self.inst.replica.inventoryitem:GetDeployPlacerName()
 end
 
+function Inst:GetLeftClickAction(position, target)
+    return self.inst.components.playeractionpicker:GetLeftClickActions(position, target)[1]
+end
+function Inst:GetRightClickAction(position, target)
+    return self.inst.components.playeractionpicker:GetRightClickActions(position, target)[1]
+end
 
 return Inst
