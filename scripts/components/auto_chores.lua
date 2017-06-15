@@ -9,7 +9,6 @@ local adultTreeAnims = {
   "idle_tall",
   "sway1_loop_tall",
   "sway2_loop_tall",
-  "swayfx_tall",
 }
 
 local adultShrub = {
@@ -129,6 +128,20 @@ local fertilizeItem = {
   glommerfuel = "glommerfuel",
 }
 
+local trapPickup = {
+  smallmeat = "smallmeat",
+  froglegs = "froglegs",
+  silk = "silk",
+  spidergland = "spidergland",
+  monstermeat = "monstermeat",
+  spoiled_food = "spoiled_food",
+}
+
+local triggeredTrapAnims = {
+  "side",
+  "trap_loop",
+}
+
 local ChoreLib = PrefabLibary(function (proto)
   local stat = {}
   if proto.components.tool ~= nil then
@@ -167,6 +180,7 @@ end
 local AutoChores = Class(function(self, inst)
   self.inst = inst
   self.INST = Inst(inst)
+  self.trapOldPos = nil
 
   print("AutoChores")
   self.inst:ListenForEvent("actionfailed", function(inst) inst.components.auto_chores:StopLoop() end)--when an action has failed stops the loop
@@ -214,6 +228,7 @@ function AutoChores:StopLoop()
   print("StopLoop")
   if self.task then
     self.task = nil
+    self.trapOldPos = nil
     self:ClearPlacer()
   end
 end
@@ -230,6 +245,8 @@ function AutoChores:GetAction()
     return self:GetPlanterAction()
   elseif self.task == "guano" then
     return self:GetFertilizeAction()
+  elseif self.task == "trap" then
+    return self:GetTrapAction()
   end
 end
 
@@ -265,24 +282,14 @@ function AutoChores:OverridePC()--player controller
       return
     end
 
-    local isdoing, isworking
-    if self.inst.sg == nil then
-      isdoing = self.inst:HasTag("doing")
-      isworking = self.inst:HasTag("working")
-    elseif not self.ismastersim and self.inst:HasTag("autopredict") then
-      isdoing = self.inst.sg:HasStateTag("doing")
-      isworking = self.inst.sg:HasStateTag("working")
-    else
-      isdoing = self.inst.sg:HasStateTag("doing") or self.inst:HasTag("doing")
-      isworking = self.inst.sg:HasStateTag("working") or self.inst:HasTag("working")
-    end
-
-    if (isdoing or isworking) then return end
+    if self:IsDoingOrWorking() then return end
 
     if self.passtime ~= nil and self.passtime > 0 then --delay
       self.passtime = self.passtime - 1
       return
     end
+
+    self.passtime = 10
 
     local bufaction = auto_chores:GetAction()
     if bufaction == nil then
@@ -291,14 +298,13 @@ function AutoChores:OverridePC()--player controller
       if bufaction.action == ACTIONS.BUILD  then
 
         if not PLAYER:builder_IsBusy() then
-          self.passtime = 20 -- 20 * 0.03초 => 0.6초
           PLAYER:builder_MakeRecipeBy(bufaction.recipe)
+          self.passtime = 20
         end
 
       elseif bufaction.action == ACTIONS.EQUIP then
 
         PLAYER:inventory_UseItemFromInvTile(bufaction.invobject)
-        self.passtime = 10 -- 10 * 0.03초 => 0.3초
         return
 
       elseif bufaction.action == ACTIONS.DEPLOY then
@@ -320,17 +326,20 @@ function AutoChores:OverridePC()--player controller
             end
           end
           self:DoAction(act)
+          self.passtime = 0
         end
         return -- DEPLOY Action need RPC instead of return bufaction
 
-      elseif bufaction.action == ACTIONS.FERTILIZE then
+      elseif bufaction.action == ACTIONS.FERTILIZE
+        or bufaction.action == ACTIONS.CHECKTRAP
+        or bufaction.action == ACTIONS.DROP then
 
         local act = bufaction
         if self.ismastersim then
           self.inst.components.combat:SetTarget(nil)
         else
-          local mouseover = act.target
-          local position = mouseover:GetPosition()
+          local mouseover = act.action ~= ACTIONS.DROP and act.target or nil
+          local position = act.pos or mouseover:GetPosition()
           local controlmods = nil
           if self.locomotor == nil then
             self.remote_controls[CONTROL_PRIMARY] = 0
@@ -779,11 +788,93 @@ function AutoChores:GetFertilizeAction()
 
     if target then
       --      print("fertilizer = " .. fertilizer.prefab, ", target = " .. target.prefab)
-      return BufferedAction( self.inst, target, ACTIONS.FERTILIZE, fertilizer)
+      return BufferedAction( self.inst, target, ACTIONS.FERTILIZE, fertilizer, target:GetPosition())
     end
   end
   self.INST:inventory_ReturnActiveItem()
 
+end
+
+local function _isTrap(item)
+  if item == nil then return false end
+  return item.prefab == "trap"
+end
+
+local function _isTriggeredTrap(item)
+  if item == nil or item.prefab ~= "trap" then return false end
+  for ik, iv in ipairs(triggeredTrapAnims) do
+    if item.AnimState:IsCurrentAnimation(iv) then return true end
+  end
+  return false
+end
+
+local function _isIdleTrap(item)
+  if item == nil or item.prefab ~= "trap" then return false end
+  return not _isTriggeredTrap(item)
+end
+
+local function _needTrapRabbithole(item)
+  if item == nil then return false end
+  if item.prefab == "rabbithole" then
+    return FindEntity(item, 1, _isTrap) == nil
+  end
+end
+
+function AutoChores:forceDropTrap(pos)
+  local trap = self.INST:inventory_GetActiveItem()
+  if not _isTrap(trap) then
+    self.INST:inventory_ReturnActiveItem()
+    self.INST:inventory_TakeActiveItemFromAllOfSlot(_isTrap)
+    trap = self.INST:inventory_GetActiveItem()
+  end
+
+  if not _isTrap(trap) then
+    local recipe = "trap"
+    if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+      return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
+    end
+  end
+
+  return self.INST:GetLeftClickAction(pos, nil)
+end
+
+function AutoChores:GetTrapAction()
+
+  local target = nil
+
+  if self.trapOldPos ~= nil then
+    local act = self:forceDropTrap(self.trapOldPos)
+    if act ~= nil and act.action == ACTIONS.DROP then
+      self.trapOldPos = nil
+    end
+    return act
+  end
+
+  target = FindEntity(self.inst, SEE_DIST_LOOT, function (item)
+    if item == nil then return false end
+    local result = trapPickup[item.prefab] or false
+    if type(result) == "string" then return self.task_flag[result] else return result end
+  end)
+  if target then
+    return BufferedAction(self.inst, target, ACTIONS.PICKUP)
+  end
+
+  target = FindEntity(self.inst, SEE_DIST_WORK_TARGET, function(item)
+    if _isTriggeredTrap(item) then
+      self.trapOldPos = item:GetPosition()
+      return true
+    elseif _needTrapRabbithole(item) then
+      return self.task_flag["rabbit"]
+    end
+  end)
+
+  if self.trapOldPos ~= nil then
+    return self.INST:GetLeftClickAction(self.trapOldPos, target)
+  end
+
+  if target~=nil then
+    return self:forceDropTrap(target:GetPosition())
+  end
 end
 
 return AutoChores
