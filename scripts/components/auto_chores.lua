@@ -156,11 +156,20 @@ local function _isMiner(item) --check if the object can mine
   return item:HasTag('MINE_tool')
 end
 
+local function FindEntityByPos(pos, radius, fn, musttags, canttags, mustoneoftags)
+  local ents = TheSim:FindEntities(pos.x, pos.y, pos.z, radius, musttags, canttags, mustoneoftags)
+  for i, v in ipairs(ents) do
+    if v.entity:IsVisible() and (fn == nil or fn(v)) then
+      return v
+    end
+  end
+end
 
 local AutoChores = Class(function(self, inst)
   self.inst = inst
   self.INST = Inst(inst)
   self.trapOldPos = nil
+  self.pc = self.inst.components.playercontroller
 
   print("AutoChores")
   self.inst:ListenForEvent("actionfailed", function(inst) inst.components.auto_chores:StopLoop() end)--when an action has failed stops the loop
@@ -200,7 +209,6 @@ function AutoChores:ClearPlacer()
   for k, v in pairs(self.task_placer) do
     v:Remove()
   end
-  self.task_placer = nil
 end
 
 
@@ -245,9 +253,8 @@ end
 function AutoChores:OverridePC()--player controller
   local auto_chores = self
   local PLAYER = Inst(self.inst)
-  local pc = self.inst.components.playercontroller
 
-  local _fnOrig =  pc.GetActionButtonAction
+  local _fnOrig =  self.pc.GetActionButtonAction
   local function _fnOver(self, force_target)
 
     if auto_chores.task == nil then return _fnOrig(self, force_target) end
@@ -269,8 +276,6 @@ function AutoChores:OverridePC()--player controller
       return
     end
 
-    self.passtime = 10
-
     local bufaction = auto_chores:GetAction()
     if bufaction == nil then
       auto_chores:StopLoop()
@@ -285,6 +290,7 @@ function AutoChores:OverridePC()--player controller
       elseif bufaction.action == ACTIONS.EQUIP then
 
         PLAYER:inventory_UseItemFromInvTile(bufaction.invobject)
+        self.passtime = 10
         return
 
       elseif bufaction.action == ACTIONS.DEPLOY then
@@ -306,7 +312,6 @@ function AutoChores:OverridePC()--player controller
             end
           end
           self:DoAction(act)
-          self.passtime = 0
         end
         return -- DEPLOY Action need RPC instead of return bufaction
 
@@ -341,7 +346,7 @@ function AutoChores:OverridePC()--player controller
     return bufaction
   end
 
-  pc.GetActionButtonAction = _fnOver
+  self.pc.GetActionButtonAction = _fnOver
 
 end
 
@@ -415,14 +420,14 @@ function AutoChores:GetLumberJackAction()--actions for chopping
     if type(result) == "string" then return self.task_flag[result] else return result end
   end, {"_inventoryitem"})
   if target then
-    return BufferedAction(self.inst, target, ACTIONS.PICKUP )--pick it up
+    return BufferedAction(self.inst, target, ACTIONS.PICKUP)--pick it up
   end
 
   if self.task_flag["shovel"] then
     item = self:GetItem(_isDigger) --get the digger object
 
     if item == nil then
-      local target = FindEntity(self.inst, SEE_DIST_LOOT, _isDigger)--find a digger on the ground
+      local target = FindEntity(self.inst, SEE_DIST_LOOT, _isDigger, {"_inventoryitem"})--find a digger on the ground
       if target then
         return BufferedAction(self.inst, target, ACTIONS.PICKUP )--pick it up
       end
@@ -443,22 +448,23 @@ function AutoChores:GetLumberJackAction()--actions for chopping
     local digger = item
 
     if digger  then
-      local target = FindEntity(self.inst, SEE_DIST_LOOT, nil, {"stump"})
+      local target = FindEntity(self.inst, SEE_DIST_WORK_TARGET, nil, {"stump"})
       if target then
         if self:TestHandAction(_isDigger) == false then --if digger is not equipped
           -- print("do Equip digger", digger)
           return BufferedAction(self.inst, nil, ACTIONS.EQUIP, digger) --equip it
         end
-        return BufferedAction(self.inst, target, ACTIONS.DIG, digger ) --otherwise dig the stump
+        return BufferedAction(self.inst, target, ACTIONS.DIG, digger) --otherwise dig the stump
       end
     end
   end
 
   item = self:GetItem(_isChopper)
   if item == nil then
-    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isChopper)--if there is something that can chop on the ground
+    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isChopper)
+    --if there is something that can chop on the ground
     if target then
-      return BufferedAction(self.inst, target, ACTIONS.PICKUP )--pick it up
+      return BufferedAction(self.inst, target, ACTIONS.PICKUP)--pick it up
     end
 
     local use_gold_tools=(GetModConfigData("use_gold_tools",modname)==1)
@@ -548,6 +554,7 @@ function AutoChores:GetMinerAction()--actions for mining
         if self.task_flag["marble"] then
           for ik, iv in ipairs(adultShrub) do
             if item.AnimState:IsCurrentAnimation(iv) then
+              self.pc.passtime = 10
               return true
             end
           end
@@ -742,6 +749,10 @@ local function _needTrapRabbithole(item)
 end
 
 function AutoChores:forceDropTrap(pos)
+  if FindEntityByPos(pos, 1, _isTrap) ~= nil then
+    return
+  end
+
   local trap = self.INST:inventory_GetActiveItem()
   if not _isTrap(trap) then
     self.INST:inventory_ReturnActiveItem()
@@ -751,11 +762,13 @@ function AutoChores:forceDropTrap(pos)
 
   if not _isTrap(trap) then
     local recipe = "trap"
-    if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+    if self.INST:builder_CanBuild("trap") then
       return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
+    else
+      return
     end
   end
-
+  self.pc.passtime = 10
   return self.INST:GetLeftClickAction(pos, nil)
 end
 
@@ -765,10 +778,10 @@ function AutoChores:GetTrapAction()
 
   if self.trapOldPos ~= nil then
     local act = self:forceDropTrap(self.trapOldPos)
-    if act ~= nil and act.action == ACTIONS.DROP then
-      self.trapOldPos = nil
+    if act ~= nil then
+      if act.action == ACTIONS.DROP then self.trapOldPos = nil end
+      return act
     end
-    return act
   end
 
   target = FindEntity(self.inst, SEE_DIST_LOOT, function (item)
@@ -780,22 +793,27 @@ function AutoChores:GetTrapAction()
     return BufferedAction(self.inst, target, ACTIONS.PICKUP)
   end
 
+  local hasTrapOrCanBuild = self.INST:hasItemOrCanBuild(_isTrap, 'trap')
+
   target = FindEntity(self.inst, SEE_DIST_WORK_TARGET, function(item)
     if _isTriggeredTrap(item) then
       self.trapOldPos = item:GetPosition()
       return true
-    elseif _needTrapRabbithole(item) then
+    elseif hasTrapOrCanBuild and _needTrapRabbithole(item) then
       return self.task_flag["rabbit"]
     end
   end)
 
   if self.trapOldPos ~= nil then
+    self.INST:inventory_ReturnActiveItem()
     return self.INST:GetLeftClickAction(self.trapOldPos, target)
   end
 
   if target~=nil then
-    return self:forceDropTrap(target:GetPosition())
+    local act = self:forceDropTrap(target:GetPosition())
+    if act ~= nil then return act end
   end
+  self.INST:inventory_ReturnActiveItem()
 end
 
 return AutoChores

@@ -51,7 +51,7 @@ configuration_options =
     options = keyslist,
     default = "V",
     hover="Changing this from in-game won't work. Sorry.",
-  }, 
+  },
   {
     name = "use_gold_tools",
     label = "Use gold tools",
@@ -73,20 +73,18 @@ configuration_options =
 		},
 	 default=0,
 --   hover="It will only work if you are the host of the server",
-  }, 
+  },
   {
     name = "planting_x",
     label = "How big is the planting square horizontally",
     options = numeric_list,
     default = 4
-
   },
   {
     name = "planting_y",
     label = "How big is the planting square vertically",
     options = numeric_list,
     default = 5
-
-  } 
+  }
 }
 
