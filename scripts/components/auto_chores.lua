@@ -142,38 +142,18 @@ local triggeredTrapAnims = {
   "trap_loop",
 }
 
-local ChoreLib = PrefabLibary(function (proto)
-  local stat = {}
-  if proto.components.tool ~= nil then
-    stat.tool = {}
-    stat.tool.CHOP = proto.components.tool:CanDoAction(ACTIONS.CHOP)
-    stat.tool.DIG = proto.components.tool:CanDoAction(ACTIONS.DIG)
-    stat.tool.MINE = proto.components.tool:CanDoAction(ACTIONS.MINE)
-  end
-  return stat
-end)
-
 local function _isChopper(item) --check if the object can chop
   if item == nil then return false end
-  local stat = ChoreLib:Get(item)
-  if stat == nil then return false end
-  if stat.tool == nil then return false end
-  return stat.tool.CHOP
+  return item:HasTag('CHOP_tool')
 end
 
 local function _isDigger(item) --check if the object can dig
   if item == nil then return false end
-  local stat = ChoreLib:Get(item)
-  if stat == nil then return false end
-  if stat.tool == nil then return false end
-  return stat.tool.DIG
+  return item:HasTag('DIG_tool')
 end
 local function _isMiner(item) --check if the object can mine
   if item == nil then return false end
-  local stat = ChoreLib:Get(item)
-  if stat == nil then return false end
-  if stat.tool == nil then return false end
-  return stat.tool.MINE
+  return item:HasTag('MINE_tool')
 end
 
 
@@ -365,65 +345,6 @@ function AutoChores:OverridePC()--player controller
 
 end
 
---function PlayerController:DoControllerActionButton()
---    if self.placer ~= nil then
---        --do the placement
---        if self.placer_recipe ~= nil and
---            self.placer.components.placer.can_build and
---            self.inst.replica.builder ~= nil and
---            not self.inst.replica.builder:IsBusy() then
---            self.inst.replica.builder:MakeRecipeAtPoint(self.placer_recipe, self.placer:GetPosition(), self.placer:GetRotation(), self.placer_recipe_skin)
---            self:CancelPlacement()
---        end
---        return
---    end
---
---    local obj = nil
---    local act = nil
---    if self.deployplacer ~= nil then
---        if self.deployplacer.components.placer.can_build then
---            act = self.deployplacer.components.placer:GetDeployAction()
---            if act ~= nil then
---                obj = act.invobject
---                act.distance = 1
---            end
---        end
---    else
---        obj = self:GetControllerTarget()
---        if obj ~= nil then
---            act = self:GetSceneItemControllerAction(obj)
---        end
---    end
---
---    if act == nil then
---        return
---    elseif self.ismastersim then
---        self.inst.components.combat:SetTarget(nil)
---    elseif self.deployplacer ~= nil then
---        if self.locomotor == nil then
---            self.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
---            SendRPCToServer(RPC.ControllerActionButtonDeploy, obj, act.pos.x, act.pos.z, act.rotation ~= 0 and act.rotation or nil)
---        elseif self:CanLocomote() then
---            act.preview_cb = function()
---                self.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
---                local isreleased = not TheInput:IsControlPressed(CONTROL_CONTROLLER_ACTION)
---                SendRPCToServer(RPC.ControllerActionButtonDeploy, obj, act.pos.x, act.pos.z, act.rotation ~= 0 and act.rotation or nil, isreleased)
---            end
---        end
---    elseif self.locomotor == nil then
---        self.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
---        SendRPCToServer(RPC.ControllerActionButton, act.action.code, obj, nil, act.action.canforce, act.action.mod_name)
---    elseif self:CanLocomote() then
---        act.preview_cb = function()
---            self.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
---            local isreleased = not TheInput:IsControlPressed(CONTROL_CONTROLLER_ACTION)
---            SendRPCToServer(RPC.ControllerActionButton, act.action.code, obj, isreleased, nil, act.action.mod_name)
---        end
---    end
---
---    self:DoAction(act)
---end
-
 function AutoChores:GetItem(fn)
   local hands = self.INST:inventory_GetEquippedItem(EQUIPSLOTS.HANDS)
   if fn(hands) then
@@ -492,7 +413,7 @@ function AutoChores:GetLumberJackAction()--actions for chopping
     if item == nil then return false end
     local result = lumberPickup[item.prefab] or false
     if type(result) == "string" then return self.task_flag[result] else return result end
-  end)
+  end, {"_inventoryitem"})
   if target then
     return BufferedAction(self.inst, target, ACTIONS.PICKUP )--pick it up
   end
@@ -593,7 +514,7 @@ function AutoChores:GetMinerAction()--actions for mining
     if item == nil then return false end
     local result = minerPickup[item.prefab] or false
     if type(result) == "string" then return self.task_flag[result] else return result end
-  end)
+  end, {"_inventoryitem"})
   if target then
     return BufferedAction(self.inst, target, ACTIONS.PICKUP )
   end
@@ -654,13 +575,13 @@ function AutoChores:GetMinerAction()--actions for mining
       return BufferedAction(self.inst, target, ACTIONS.MINE, minner)
     end
   end
-
-
 end
 
 function AutoChores:GetCollectorAction()
+  local isDigTool = _isDigger(self.INST:inventory_GetEquippedItem(EQUIPSLOTS.HANDS))
   local target = FindEntity(self.inst, SEE_DIST_WORK_TARGET, function (item)
     if item == nil then return false end
+    if isDigTool and item:HasTag('DIG_workable') then return false end
     if item:HasTag("pickable") then
       -- pickable
       local result = collectorPick[item.prefab] or false
@@ -670,7 +591,7 @@ function AutoChores:GetCollectorAction()
       local result = collectorPickup[item.prefab] or false
       if type(result) == "string" then return self.task_flag[result] else return result end
     end
-  end)
+  end, nil, {"fire"}, {"pickable", "_inventoryitem"})
   if target then
     if target:HasTag("pickable") then
       return BufferedAction(self.inst, target, ACTIONS.PICK )
@@ -686,7 +607,7 @@ function AutoChores:GetDiggerAction()
     if item == nil then return false end
     local result = diggerPickup[item.prefab] or false
     if type(result) == "string" then return self.task_flag[result] else return result end
-  end)
+  end, {"_inventoryitem"})
   if target then
     return BufferedAction(self.inst, target, ACTIONS.PICKUP )
   end
@@ -854,7 +775,7 @@ function AutoChores:GetTrapAction()
     if item == nil then return false end
     local result = trapPickup[item.prefab] or false
     if type(result) == "string" then return self.task_flag[result] else return result end
-  end)
+  end, {"_inventoryitem"})
   if target then
     return BufferedAction(self.inst, target, ACTIONS.PICKUP)
   end
