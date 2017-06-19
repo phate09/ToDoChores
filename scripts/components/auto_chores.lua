@@ -3,7 +3,6 @@ local CONFIG
 local Inst = require "chores-lib.instance"
 local Inspect = require "inspect"
 local PrefabLibary = require("chores-lib.prefablibrary")
-local modname = KnownModIndex:GetModActualName("To Do Chores [Forked]")
 
 local adultTreeAnims = {
   "idle_tall",
@@ -185,15 +184,27 @@ nil,
 function AutoChores:SetGlobal(global)
   GLOBAL=global
 end
-function AutoChores:SetConfig(config)
-  CONFIG=config
+function AutoChores:SetEnv(newEnv)
+  self.env = newEnv
+  self:UpdateSettings()
 end
 function AutoChores:SetTask(task, flag, placer)
+  -- print("SetTask", task, flag, placer)
   self:ClearPlacer()
   self.task = task
   self.task_flag = flag
   self.task_placer = placer
-  --  print("SetTask", task, flag, placer)
+end
+function AutoChores:UpdateSettings()
+  local config = KnownModIndex:GetModConfigurationOptions_Internal(self.env.modname, false)
+  CONFIG = {}
+  for i, v in pairs(config) do
+    if v.saved ~= nil then
+      CONFIG[v.name] = v.saved
+    else
+      CONFIG[v.name] = v.default
+    end
+  end
 end
 function AutoChores:ForceStop()
   -- body
@@ -328,12 +339,12 @@ function AutoChores:OverridePC()--player controller
           local controlmods = nil
           if self.locomotor == nil then
             self.remote_controls[CONTROL_PRIMARY] = 0
-            SendRPCToServer(RPC.LeftClick, act.action.code, position.x, position.z, mouseover, nil, controlmods, act.action.canforce, act.action.mod_name)
+            SendRPCToServer(RPC.LeftClick, act.action.code, position.x, position.z, mouseover, nil, controlmods, act.action.canforce)
           elseif act.action ~= ACTIONS.WALKTO and self:CanLocomote() then
             act.preview_cb = function()
               self.remote_controls[CONTROL_PRIMARY] = 0
               local isreleased = not TheInput:IsControlPressed(CONTROL_PRIMARY)
-              SendRPCToServer(RPC.LeftClick, act.action.code, position.x, position.z, mouseover, isreleased, controlmods, nil, act.action.mod_name)
+              SendRPCToServer(RPC.LeftClick, act.action.code, position.x, position.z, mouseover, isreleased, controlmods, nil)
             end
           end
         end
@@ -432,9 +443,8 @@ function AutoChores:GetLumberJackAction()--actions for chopping
         return BufferedAction(self.inst, target, ACTIONS.PICKUP )--pick it up
       end
 
-      local use_gold_tools=(GetModConfigData("use_gold_tools",modname)==1)
       local recipe = "shovel"
-      if use_gold_tools then recipe = "goldenshovel" end
+      if CONFIG.use_gold_tools then recipe = "goldenshovel" end
       if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
         return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
       else
@@ -467,9 +477,8 @@ function AutoChores:GetLumberJackAction()--actions for chopping
       return BufferedAction(self.inst, target, ACTIONS.PICKUP)--pick it up
     end
 
-    local use_gold_tools=(GetModConfigData("use_gold_tools",modname)==1)
     local recipe = "axe"
-    if use_gold_tools then recipe = "goldenaxe" end
+    if CONFIG.use_gold_tools then recipe = "goldenaxe" end
     if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
       return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
     else
@@ -483,13 +492,12 @@ function AutoChores:GetLumberJackAction()--actions for chopping
   local chopper = item
 
   local target = FindEntity(self.inst, SEE_DIST_WORK_TARGET, function (item)
-    local adult_trees_only=(GetModConfigData("cut_adult_tree_only",modname)==1)
     if item == nil then return false end
     if not item:HasTag("tree") then return false end
     if item:HasTag("burnt") then return self.task_flag["charcoal"] end
 
     -- adult tree
-    if adult_trees_only then
+    if CONFIG.cut_adult_tree_only then
       for ik, iv in ipairs(adultTreeAnims) do
         if item.AnimState:IsCurrentAnimation(iv) then
           return true
@@ -532,9 +540,8 @@ function AutoChores:GetMinerAction()--actions for mining
       return BufferedAction(self.inst, target, ACTIONS.PICKUP )
     end
 
-    local use_gold_tools=(GetModConfigData("use_gold_tools",modname)==1)
     local recipe = "pickaxe"
-    if use_gold_tools then recipe = "goldenpickaxe" end
+    if CONFIG.use_gold_tools then recipe = "goldenpickaxe" end
     if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
       return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
     else
@@ -627,9 +634,8 @@ function AutoChores:GetDiggerAction()
       return BufferedAction(self.inst, target, ACTIONS.PICKUP )
     end
 
-    local use_gold_tools=(GetModConfigData("use_gold_tools",modname)==1)
     local recipe = "shovel"
-    if use_gold_tools then recipe = "goldenshovel" end
+    if CONFIG.use_gold_tools then recipe = "goldenshovel" end
     if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
       return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
     else
