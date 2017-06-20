@@ -118,6 +118,10 @@ local planterDeploy = {
   marblebean = "marblebean",
 }
 
+local planterRecipe = {
+  marblebean = "marblebean",
+}
+
 local fertilizeItem = {
   poop = "poop",
   guano = "poop",
@@ -446,11 +450,11 @@ function AutoChores:GetLumberJackAction()--actions for chopping
 
       local recipe = "shovel"
       if CONFIG.use_gold_tools then recipe = "goldenshovel" end
-      if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+      if self.INST:CanBuild(recipe) then
         return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
       else
         local recipe = "shovel"
-        if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+        if self.INST:CanBuild(recipe) then
           return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
         end
       end
@@ -472,7 +476,7 @@ function AutoChores:GetLumberJackAction()--actions for chopping
 
   item = self:GetItem(_isChopper)
   if item == nil then
-    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isChopper)
+    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isChopper, {"_inventoryitem"})
     --if there is something that can chop on the ground
     if target then
       return BufferedAction(self.inst, target, ACTIONS.PICKUP)--pick it up
@@ -480,11 +484,11 @@ function AutoChores:GetLumberJackAction()--actions for chopping
 
     local recipe = "axe"
     if CONFIG.use_gold_tools then recipe = "goldenaxe" end
-    if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+    if self.INST:CanBuild(recipe) then
       return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
     else
       local recipe = "axe"
-      if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+      if self.INST:CanBuild(recipe) then
         return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
       end
     end
@@ -536,18 +540,18 @@ function AutoChores:GetMinerAction()--actions for mining
 
   item = self:GetItem(_isMiner)
   if item == nil then
-    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isMiner)
+    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isMiner, {"_inventoryitem"})
     if target then
       return BufferedAction(self.inst, target, ACTIONS.PICKUP )
     end
 
     local recipe = "pickaxe"
     if CONFIG.use_gold_tools then recipe = "goldenpickaxe" end
-    if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+    if self.INST:CanBuild(recipe) then
       return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
     else
       local recipe = "pickaxe"
-      if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+      if self.INST:CanBuild(recipe) then
         return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
       end
     end
@@ -630,18 +634,18 @@ function AutoChores:GetDiggerAction()
 
   local item = self:GetItem(_isDigger)
   if item == nil then
-    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isDigger)
+    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isDigger, {"_inventoryitem"})
     if target then
       return BufferedAction(self.inst, target, ACTIONS.PICKUP )
     end
 
     local recipe = "shovel"
     if CONFIG.use_gold_tools then recipe = "goldenshovel" end
-    if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+    if self.INST:CanBuild(recipe) then
       return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
     else
       local recipe = "shovel"
-      if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+      if self.INST:CanBuild(recipe) then
         return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
       end
     end
@@ -669,11 +673,14 @@ end
 
 function AutoChores:GetPlanterAction()
 
-  local seed = self:GetItem(function (item)
+  local function _isSeed (item)
     if item == nil then return false end
     local result = planterDeploy[item.prefab] or false
     if type(result) == "string" then return self.task_flag[result] else return result end
-  end)
+  end
+
+  local seed = self:GetItem(_isSeed)
+
   if seed ~= nil then
     if self.task_placer ~= nil then
       for k, placer in pairs(self.task_placer) do
@@ -681,6 +688,17 @@ function AutoChores:GetPlanterAction()
         if Inst(seed):inventoryitem_CanDeploy(pos) then
           return BufferedAction( self.inst, nil, ACTIONS.DEPLOY, seed, pos)
         end
+      end
+    end
+  else
+    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isSeed, {"_inventoryitem"})
+    if target then
+      return BufferedAction(self.inst, target, ACTIONS.PICKUP )
+    end
+
+    for recipe, requireFlag in pairs(planterRecipe) do
+      if self.task_flag[requireFlag] and self.INST:CanBuild(recipe) then
+        return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
       end
     end
   end
@@ -702,16 +720,14 @@ function AutoChores:GetFertilizeAction()
   end
 
   if not _isFertilizer(fertilizer) then
-    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isFertilizer)
+    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isFertilizer, {"_inventoryitem"})
     if target then
       return BufferedAction(self.inst, target, ACTIONS.PICKUP )
     end
 
     local recipe = "fertilizer"
-    if self.task_flag[recipe] then
-      if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
-        return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
-      end
+    if self.task_flag[recipe] and self.INST:CanBuild(recipe) then
+      return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
     end
   end
 

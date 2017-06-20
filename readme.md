@@ -81,6 +81,12 @@ NB. "Geometric Placement" mod messes up with the placement of plants. Hold CTRL 
 
 # Changes Log
 
+### 1.5
+
+* support Traditional Chinese and Simplified Chinese
+* fix race condition of in-game settings with other mod (like Auto Actions)
+* planting feature now can craft marblebean (but still need one to start job)
+
 ### 1.4
 
 * Added auto-trap feature: auto set trap and check trap
