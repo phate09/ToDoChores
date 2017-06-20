@@ -60,8 +60,9 @@ local OptionScreen = Class(Screen, function( self, lord, env )
     self.servertitle:SetTruncatedString(serverNameStr, 800, 100, true)
     self.servertitle:SetPosition(0,215)
 
+    self.env = env
     self.modname = env.modname
-    self.config = KnownModIndex:LoadModConfigurationOptions(self.modname, false)
+    self.config = KnownModIndex:GetModConfigurationOptions_Internal(self.modname, false)
     self.options = {}
 
     if self.config and type(self.config) == "table" then
@@ -242,7 +243,7 @@ function OptionScreen:Apply()
         TheFrontEnd:PopScreen()
     end
 
-    self.thelord.updatesettings = true
+    self.env.updatesettings = true
 end
 
 function OptionScreen:IsDefaultSettings()

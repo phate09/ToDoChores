@@ -103,8 +103,8 @@ local function AddOptionsScreen( self )
   local OldOnUpdate = controls.OnUpdate
   local function OnUpdate(...)
     OldOnUpdate(...)
-    if controls.updatesettings then
-      controls.updatesettings = false
+    if env.updatesettings then
+      env.updatesettings = false
       UpdateSettings()
     end
   end

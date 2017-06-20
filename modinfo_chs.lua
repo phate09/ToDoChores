@@ -1,6 +1,6 @@
 name = "家务小助手"
 author = "phate09, taichunmin"
-version = "1.4-beta"
+version = "1.5b2"
 description = "版本: "..version.."\n\n自动采集、砍树、挖掘、种树、施肥、放陷阱！\n\n[预设使用方法]\n* 使用 V 来开启工作面板\n* 使用 O 来开启游戏内设定"
 
 forumthread = ""

@@ -1,6 +1,6 @@
 name = "To Do Chores"
 author = "phate09, taichunmin"
-version = "1.5b1"
+version = "1.5b2"
 description = "version: "..version.."\n\nAutomate gathering, chopping, digging, planting, fertilizing and traping!\n\n[Usage]\n* Press key V to toggle chores wheel\n* Press O to open in-game settings"
 
 forumthread = ""
@@ -76,4 +76,3 @@ configuration_options =
     default = 5
   }
 }
-

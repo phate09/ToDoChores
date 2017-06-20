@@ -205,6 +205,7 @@ function AutoChores:UpdateSettings()
       CONFIG[v.name] = v.default
     end
   end
+  -- print('AutoChores CONFIG: '..Inspect(CONFIG))
 end
 function AutoChores:ForceStop()
   -- body
