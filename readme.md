@@ -73,19 +73,32 @@ The other is option of chores.
   * rot - same
   * rotten eggs - same
   * glommer goop - same
+  
+ * Row 7
+  * trap - checks all the traps
+  * rabbit - put a trap on the rabbit holes as close as possible (create the trap if not already in inventory)
+  * morsel - pickup morsels on the ground
+  * frog legs - same
+  * silk - same
+  * spider gland - same
+  * monster meat - same
+  * rot - same
 
 Planned Changes and ideas
 ------------------------
 * [X]In-game menu for configuration
 * [ ]Actions as checkboxes: the actions are going to be toggleable so that the character will perform any actions turned on. (Picking up carrots while shoveling saplings? Want to dig but not pick? etc)
 * [X]Auto Fertilise action
-* [ ]Auto Check traps?
+* [X]Auto Check traps?
 * [ ]Auto Cooking?
 * [ ]Auto dry meat?
 * [ ]Auto Harvest fields?
+* [ ]Auto Fishing?
 
 Changes Log
 ------------------------
+1.4
+	Added auto-trap feature
 1.3
 	Added option to auto-fertilise fields, it will build the bucket-o-poop if possible
 	Fixed error when mining ice
