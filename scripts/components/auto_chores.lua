@@ -145,6 +145,17 @@ local triggeredTrapAnims = {
   "trap_loop",
 }
 
+local dryItem = {
+  smallmeat = "smallmeat",
+  drumstick = "drumstick",
+  batwing = "batwing",
+  fish = "fish",
+  froglegs = "froglegs",
+  eel = "eel",
+  monstermeat = "monstermeat",
+  meat = "meat",
+}
+
 local function _isChopper(item) --check if the object can chop
   if item == nil then return false end
   return item:HasTag('CHOP_tool')
@@ -251,6 +262,8 @@ function AutoChores:GetAction()
     return self:GetFertilizeAction()
   elseif self.task == "trap" then
     return self:GetTrapAction()
+  elseif self.task == "smallmeat_dried" then
+    return self:GetDryAction()
   end
 end
 
@@ -333,6 +346,7 @@ function AutoChores:OverridePC()--player controller
 
       elseif bufaction.action == ACTIONS.FERTILIZE
         or bufaction.action == ACTIONS.CHECKTRAP
+        or bufaction.action == ACTIONS.DRY
         or bufaction.action == ACTIONS.DROP then
 
         local act = bufaction
@@ -796,7 +810,6 @@ function AutoChores:forceDropTrap(pos)
 end
 
 function AutoChores:GetTrapAction()
-
   local target = nil
 
   if self.trapOldPos ~= nil then
@@ -835,6 +848,45 @@ function AutoChores:GetTrapAction()
   if target~=nil then
     local act = self:forceDropTrap(target:GetPosition())
     if act ~= nil then return act end
+  end
+  self.INST:inventory_ReturnActiveItem()
+end
+
+function AutoChores:GetDryAction()
+  local target = nil
+  local meat = nil
+
+  local function _isDryableMeat(item)
+    if item == nil then return false end
+    local result = dryItem[item.prefab] or false
+    if type(result) == "string" then return self.task_flag[result] else return result end
+  end
+
+  target = FindEntity(self.inst, SEE_DIST_LOOT, _isDryableMeat, {"_inventoryitem"})
+  if target then
+    return BufferedAction(self.inst, target, ACTIONS.PICKUP )
+  end
+
+  target = FindEntity(self.inst, SEE_DIST_WORK_TARGET, function(item)
+    if item == nil then return false end
+    if item:HasTag("candry") then
+      meat = self.INST:inventory_GetActiveItem()
+      if not _isDryableMeat(meat) then
+        self.INST:inventory_ReturnActiveItem()
+        self.INST:inventory_TakeActiveItemFromAllOfSlot(_isDryableMeat)
+        meat = self.INST:inventory_GetActiveItem()
+      end
+      if meat == nil then return false end
+    end
+    return true
+  end, nil, nil, {"candry", "dried"})
+
+  if target ~= nil then
+    if target:HasTag("candry") and meat ~= nil then
+      return self.INST:GetLeftClickAction(target:GetPosition(), target)
+    elseif target:HasTag("dried") then
+      return BufferedAction(self.inst, target, ACTIONS.HARVEST)
+    end
   end
   self.INST:inventory_ReturnActiveItem()
 end

@@ -1,7 +1,7 @@
 name = "家務小助手"
 author = "phate09, taichunmin"
-version = "1.5b3"
-description = "版本: "..version.."\n\n自動採集、砍樹、挖掘、種樹、施肥、放陷阱！\n\n[預設使用方法]\n* 使用 V 來開啟工作面板\n* 使用 O 來開啟遊戲內設定"
+version = "1.5b4"
+description = "版本: "..version.."\n\n自動採集、砍樹、挖掘、種樹、施肥、放陷阱、曬肉乾！\n\n[預設使用方法]\n* 使用 V 來開啟工作面板\n* 使用 O 來開啟遊戲內設定"
 
 forumthread = ""
 

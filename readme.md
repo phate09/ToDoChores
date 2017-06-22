@@ -54,7 +54,7 @@ The other is option of chores.
 NB. "Geometric Placement" mod messes up with the placement of plants. Hold CTRL when planting so that it temporarily disables geometric placement
 
 * Row 6
-    - guano - fertilise crops
+    - guano - fertilize crops and pickup fertilizer
     - poop - use poop to fertilise
     - bucket-o-poop - use bucket or make one to fertilise
     - guano - use guano to fertilise
@@ -72,6 +72,18 @@ NB. "Geometric Placement" mod messes up with the placement of plants. Hold CTRL 
     - monster meat - same
     - rot - same
 
+* Row 8
+    - smallmeat_dried - dry meats and pickup meats
+    - smallmeat - dry smallmeat and pickup smallmeat
+    - meat - same
+    - monstermeat - same
+    - froglegs - same
+    - fish - same
+    - drumstick - same
+    - eel - same
+    - batwing - same
+
+
 # Planned Changes and ideas
 
 * [ ] Actions as checkboxes: the actions are going to be toggleable so that the character will perform any actions turned on. (Picking up carrots while shoveling saplings? Want to dig but not pick? etc)
@@ -86,6 +98,7 @@ NB. "Geometric Placement" mod messes up with the placement of plants. Hold CTRL 
 * support Traditional Chinese and Simplified Chinese
 * fix race condition of in-game settings with other mod (like Auto Actions)
 * planting feature now can craft marblebean (but still need one to start job)
+* Added dry feature: auto harvest Drying Rack, dry meats and pickup meats
 
 ### 1.4
 
