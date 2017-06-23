@@ -3,7 +3,6 @@ local CONFIG
 local Inst = require "chores-lib.instance"
 local Inspect = require "inspect"
 local PrefabLibary = require("chores-lib.prefablibrary")
-local modname = KnownModIndex:GetModActualName("To Do Chores [Forked]")
 
 local adultTreeAnims = {
   "idle_tall",
@@ -119,6 +118,10 @@ local planterDeploy = {
   marblebean = "marblebean",
 }
 
+local planterRecipe = {
+  marblebean = "marblebean",
+}
+
 local fertilizeItem = {
   poop = "poop",
   guano = "poop",
@@ -140,6 +143,17 @@ local trapPickup = {
 local triggeredTrapAnims = {
   "side",
   "trap_loop",
+}
+
+local dryItem = {
+  smallmeat = "smallmeat",
+  drumstick = "drumstick",
+  batwing = "batwing",
+  fish = "fish",
+  froglegs = "froglegs",
+  eel = "eel",
+  monstermeat = "monstermeat",
+  meat = "meat",
 }
 
 local function _isChopper(item) --check if the object can chop
@@ -185,15 +199,28 @@ nil,
 function AutoChores:SetGlobal(global)
   GLOBAL=global
 end
-function AutoChores:SetConfig(config)
-  CONFIG=config
+function AutoChores:SetEnv(newEnv)
+  self.env = newEnv
+  self:UpdateSettings()
 end
 function AutoChores:SetTask(task, flag, placer)
+  -- print("SetTask", task, flag, placer)
   self:ClearPlacer()
   self.task = task
   self.task_flag = flag
   self.task_placer = placer
-  --  print("SetTask", task, flag, placer)
+end
+function AutoChores:UpdateSettings()
+  local config = KnownModIndex:GetModConfigurationOptions_Internal(self.env.modname, false)
+  CONFIG = {}
+  for i, v in pairs(config) do
+    if v.saved ~= nil then
+      CONFIG[v.name] = v.saved
+    else
+      CONFIG[v.name] = v.default
+    end
+  end
+  -- print('AutoChores CONFIG: '..Inspect(CONFIG))
 end
 function AutoChores:ForceStop()
   -- body
@@ -235,6 +262,8 @@ function AutoChores:GetAction()
     return self:GetFertilizeAction()
   elseif self.task == "trap" then
     return self:GetTrapAction()
+  elseif self.task == "smallmeat_dried" then
+    return self:GetDryAction()
   end
 end
 
@@ -317,6 +346,7 @@ function AutoChores:OverridePC()--player controller
 
       elseif bufaction.action == ACTIONS.FERTILIZE
         or bufaction.action == ACTIONS.CHECKTRAP
+        or bufaction.action == ACTIONS.DRY
         or bufaction.action == ACTIONS.DROP then
 
         local act = bufaction
@@ -328,12 +358,12 @@ function AutoChores:OverridePC()--player controller
           local controlmods = nil
           if self.locomotor == nil then
             self.remote_controls[CONTROL_PRIMARY] = 0
-            SendRPCToServer(RPC.LeftClick, act.action.code, position.x, position.z, mouseover, nil, controlmods, act.action.canforce, act.action.mod_name)
+            SendRPCToServer(RPC.LeftClick, act.action.code, position.x, position.z, mouseover, nil, controlmods, act.action.canforce)
           elseif act.action ~= ACTIONS.WALKTO and self:CanLocomote() then
             act.preview_cb = function()
               self.remote_controls[CONTROL_PRIMARY] = 0
               local isreleased = not TheInput:IsControlPressed(CONTROL_PRIMARY)
-              SendRPCToServer(RPC.LeftClick, act.action.code, position.x, position.z, mouseover, isreleased, controlmods, nil, act.action.mod_name)
+              SendRPCToServer(RPC.LeftClick, act.action.code, position.x, position.z, mouseover, isreleased, controlmods, nil)
             end
           end
         end
@@ -432,14 +462,13 @@ function AutoChores:GetLumberJackAction()--actions for chopping
         return BufferedAction(self.inst, target, ACTIONS.PICKUP )--pick it up
       end
 
-      local use_gold_tools=(GetModConfigData("use_gold_tools",modname)==1)
       local recipe = "shovel"
-      if use_gold_tools then recipe = "goldenshovel" end
-      if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+      if CONFIG.use_gold_tools then recipe = "goldenshovel" end
+      if self.INST:CanBuild(recipe) then
         return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
       else
         local recipe = "shovel"
-        if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+        if self.INST:CanBuild(recipe) then
           return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
         end
       end
@@ -461,20 +490,19 @@ function AutoChores:GetLumberJackAction()--actions for chopping
 
   item = self:GetItem(_isChopper)
   if item == nil then
-    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isChopper)
+    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isChopper, {"_inventoryitem"})
     --if there is something that can chop on the ground
     if target then
       return BufferedAction(self.inst, target, ACTIONS.PICKUP)--pick it up
     end
 
-    local use_gold_tools=(GetModConfigData("use_gold_tools",modname)==1)
     local recipe = "axe"
-    if use_gold_tools then recipe = "goldenaxe" end
-    if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+    if CONFIG.use_gold_tools then recipe = "goldenaxe" end
+    if self.INST:CanBuild(recipe) then
       return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
     else
       local recipe = "axe"
-      if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+      if self.INST:CanBuild(recipe) then
         return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
       end
     end
@@ -483,13 +511,12 @@ function AutoChores:GetLumberJackAction()--actions for chopping
   local chopper = item
 
   local target = FindEntity(self.inst, SEE_DIST_WORK_TARGET, function (item)
-    local adult_trees_only=(GetModConfigData("cut_adult_tree_only",modname)==1)
     if item == nil then return false end
     if not item:HasTag("tree") then return false end
     if item:HasTag("burnt") then return self.task_flag["charcoal"] end
 
     -- adult tree
-    if adult_trees_only then
+    if CONFIG.cut_adult_tree_only then
       for ik, iv in ipairs(adultTreeAnims) do
         if item.AnimState:IsCurrentAnimation(iv) then
           return true
@@ -527,19 +554,18 @@ function AutoChores:GetMinerAction()--actions for mining
 
   item = self:GetItem(_isMiner)
   if item == nil then
-    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isMiner)
+    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isMiner, {"_inventoryitem"})
     if target then
       return BufferedAction(self.inst, target, ACTIONS.PICKUP )
     end
 
-    local use_gold_tools=(GetModConfigData("use_gold_tools",modname)==1)
     local recipe = "pickaxe"
-    if use_gold_tools then recipe = "goldenpickaxe" end
-    if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+    if CONFIG.use_gold_tools then recipe = "goldenpickaxe" end
+    if self.INST:CanBuild(recipe) then
       return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
     else
       local recipe = "pickaxe"
-      if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+      if self.INST:CanBuild(recipe) then
         return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
       end
     end
@@ -622,19 +648,18 @@ function AutoChores:GetDiggerAction()
 
   local item = self:GetItem(_isDigger)
   if item == nil then
-    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isDigger)
+    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isDigger, {"_inventoryitem"})
     if target then
       return BufferedAction(self.inst, target, ACTIONS.PICKUP )
     end
 
-    local use_gold_tools=(GetModConfigData("use_gold_tools",modname)==1)
     local recipe = "shovel"
-    if use_gold_tools then recipe = "goldenshovel" end
-    if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+    if CONFIG.use_gold_tools then recipe = "goldenshovel" end
+    if self.INST:CanBuild(recipe) then
       return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
     else
       local recipe = "shovel"
-      if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
+      if self.INST:CanBuild(recipe) then
         return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
       end
     end
@@ -662,11 +687,14 @@ end
 
 function AutoChores:GetPlanterAction()
 
-  local seed = self:GetItem(function (item)
+  local function _isSeed (item)
     if item == nil then return false end
     local result = planterDeploy[item.prefab] or false
     if type(result) == "string" then return self.task_flag[result] else return result end
-  end)
+  end
+
+  local seed = self:GetItem(_isSeed)
+
   if seed ~= nil then
     if self.task_placer ~= nil then
       for k, placer in pairs(self.task_placer) do
@@ -674,6 +702,17 @@ function AutoChores:GetPlanterAction()
         if Inst(seed):inventoryitem_CanDeploy(pos) then
           return BufferedAction( self.inst, nil, ACTIONS.DEPLOY, seed, pos)
         end
+      end
+    end
+  else
+    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isSeed, {"_inventoryitem"})
+    if target then
+      return BufferedAction(self.inst, target, ACTIONS.PICKUP )
+    end
+
+    for recipe, requireFlag in pairs(planterRecipe) do
+      if self.task_flag[requireFlag] and self.INST:CanBuild(recipe) then
+        return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
       end
     end
   end
@@ -695,16 +734,14 @@ function AutoChores:GetFertilizeAction()
   end
 
   if not _isFertilizer(fertilizer) then
-    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isFertilizer)
+    local target = FindEntity(self.inst, SEE_DIST_LOOT, _isFertilizer, {"_inventoryitem"})
     if target then
       return BufferedAction(self.inst, target, ACTIONS.PICKUP )
     end
 
     local recipe = "fertilizer"
-    if self.task_flag[recipe] then
-      if self.INST:builder_KnowsRecipe(recipe) and self.INST:builder_CanBuild(recipe) then
-        return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
-      end
+    if self.task_flag[recipe] and self.INST:CanBuild(recipe) then
+      return BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, nil, recipe, 1)
     end
   end
 
@@ -773,7 +810,6 @@ function AutoChores:forceDropTrap(pos)
 end
 
 function AutoChores:GetTrapAction()
-
   local target = nil
 
   if self.trapOldPos ~= nil then
@@ -812,6 +848,45 @@ function AutoChores:GetTrapAction()
   if target~=nil then
     local act = self:forceDropTrap(target:GetPosition())
     if act ~= nil then return act end
+  end
+  self.INST:inventory_ReturnActiveItem()
+end
+
+function AutoChores:GetDryAction()
+  local target = nil
+  local meat = nil
+
+  local function _isDryableMeat(item)
+    if item == nil then return false end
+    local result = dryItem[item.prefab] or false
+    if type(result) == "string" then return self.task_flag[result] else return result end
+  end
+
+  target = FindEntity(self.inst, SEE_DIST_LOOT, _isDryableMeat, {"_inventoryitem"})
+  if target then
+    return BufferedAction(self.inst, target, ACTIONS.PICKUP )
+  end
+
+  target = FindEntity(self.inst, SEE_DIST_WORK_TARGET, function(item)
+    if item == nil then return false end
+    if item:HasTag("candry") then
+      meat = self.INST:inventory_GetActiveItem()
+      if not _isDryableMeat(meat) then
+        self.INST:inventory_ReturnActiveItem()
+        self.INST:inventory_TakeActiveItemFromAllOfSlot(_isDryableMeat)
+        meat = self.INST:inventory_GetActiveItem()
+      end
+      if meat == nil then return false end
+    end
+    return true
+  end, nil, nil, {"candry", "dried"})
+
+  if target ~= nil then
+    if target:HasTag("candry") and meat ~= nil then
+      return self.INST:GetLeftClickAction(target:GetPosition(), target)
+    elseif target:HasTag("dried") then
+      return BufferedAction(self.inst, target, ACTIONS.HARVEST)
+    end
   end
   self.INST:inventory_ReturnActiveItem()
 end
