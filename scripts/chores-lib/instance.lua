@@ -7,10 +7,15 @@ function Inst:builder_IsBusy()
 end
 
 function Inst:builder_KnowsRecipe(recipename)
-    return self.inst.replica.builder:KnowsRecipe(recipename)
+  if recipename == nil then return false end
+  return self.inst.replica.builder:KnowsRecipe(recipename)
 end
 function Inst:builder_CanBuild(recipename)
-    return self.inst.replica.builder:CanBuild(recipename)
+  if recipename == nil then return false end
+  return self.inst.replica.builder:CanBuild(recipename)
+end
+function Inst:CanBuild(recipename)
+    return self:builder_KnowsRecipe(recipename) and self:builder_CanBuild(recipename)
 end
 function Inst:builder_MakeRecipeBy(recipename)
   local recipe = AllRecipes[recipename]
@@ -70,6 +75,38 @@ function Inst:inventory_FindItems(fn)
       end
     end
     return result
+end
+function Inst:hasItem(fn)
+  if fn == nil then return false end
+  for k,v in pairs(self:inventory_GetAllItems()) do
+    if fn(v) then
+      return true
+    end
+  end
+  for k,v in pairs(self:inventory_GetEquips()) do
+    if fn(v) then
+      return true
+    end
+  end
+  local overflow = self:inventory_GetOverflowContainer()
+  if overflow ~= nil then
+    local items = nil
+    if overflow.slots ~= nil then
+      items = overflow.slots
+    else
+      items = overflow:GetItems()
+    end
+
+    for k,v in pairs(items) do
+      if fn(v) then
+        return true
+      end
+    end
+  end
+  return false
+end
+function Inst:hasItemOrCanBuild(fn, recipename)
+  return self:hasItem(fn) or self:CanBuild(recipename)
 end
 
 function Inst:inventory_GetActiveItem()
