@@ -4,6 +4,7 @@ local TUNING = _G.TUNING
 --_G.require( 'debugkeys' )
 local OptionScreen = _G.require("widgets/options")
 local Inspect = _G.require("components/inspect")
+local ControlWidget = _G.require("widgets/chores")
 local widget
 
 -------------
@@ -40,7 +41,7 @@ local function IsMapScreen()
 end
 
 local function AddWidget(parent)
-  local ControlWidget = _G.require "widgets/chores" --load the widget chores class instance
+  ControlWidget:SetEnv(env)
   widget = parent:AddChild(ControlWidget())
   widget:Hide()--widget starts hidden
 
@@ -60,6 +61,7 @@ end)
 
 local function UpdateSettings()
   _G.ThePlayer.components.auto_chores:UpdateSettings()
+  ControlWidget:UpdateSettings()
 end
 
 local function ShowOptionsScreen( controls )
