@@ -78,8 +78,21 @@ local ChoresWheel = Class(Widget, function(self)
   self.root:SetSize(25 + 45 * colcnt, 50 * rowcnt)
 
 end)
-function ChoresWheel:SetConfig(config)
-	CONFIG=config
+function ChoresWheel:SetEnv(newEnv)
+  self.env = newEnv
+  self:UpdateSettings()
+end
+function ChoresWheel:UpdateSettings()
+  local config = KnownModIndex:GetModConfigurationOptions_Internal(self.env.modname, false)
+  CONFIG = {}
+  for i, v in pairs(config) do
+    if v.saved ~= nil then
+      CONFIG[v.name] = v.saved
+    else
+      CONFIG[v.name] = v.default
+    end
+  end
+  -- print('AutoChores CONFIG: '..Inspect(CONFIG))
 end
 function ChoresWheel:Toggle()--toggle visibility of the widget
   if self.shown then
@@ -185,8 +198,8 @@ function ChoresWheel:showPlacer() --on the focus of planting displays the placer
 
   self:StartUpdating()
 
-  local planting_x=GetModConfigData("planting_x",modname)
-  local planting_y=GetModConfigData("planting_y",modname)
+  local planting_x = CONFIG.planting_x
+  local planting_y = CONFIG.planting_y
 	print("showing "..planting_x.."x"..planting_y.." grid")
   for xOff = 0, planting_x-1, 1 do
     for zOff = 0, planting_y-1, 1 do
