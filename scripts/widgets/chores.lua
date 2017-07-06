@@ -8,7 +8,7 @@ local CONFIG
 
 CW = nil
 
-local PLACER_GAP = {
+local PLACER_GAP = { -- only allow integer, no float point number
   pinecone = 2,
   acorn = 2,
   twiggy_nut=2,
@@ -168,7 +168,7 @@ function ChoresWheel:showPlacer() --on the focus of planting displays the placer
 
   local placerGap = PLACER_GAP[prefab_name]
 
-  local function _find_placer (item) --finds the icon to use as marker to show where things will be planted
+  local function _find_placer (item)
     if item == nil then return false end
     if prefab_name == "dug_berrybush" and (item.prefab == "dug_berrybush2" or item.prefab == "dug_berrybush_juicy") then
       return true
@@ -177,22 +177,7 @@ function ChoresWheel:showPlacer() --on the focus of planting displays the placer
   end
 
   local placer_item = Inst(ThePlayer):inventory_FindItems(_find_placer)[1]
-
-  -- local placer_item = SpawnPrefab(prefab_name)
-
-  --print(placer_item)
-  if placer_item == nil then
-    -- 심을것 없음 에러
-    --No planting error
-    return
-  end
-
-
-  if Inst(placer_item):inventoryitem() == nil then
-    -- 심을것 없음 에러
-    --No planting error
-    return
-  end
+  if placer_item == nil or Inst(placer_item):inventoryitem() == nil then return end
 
   local placer_name = Inst(placer_item):inventoryitem_GetDeployPlacerName()
 
@@ -206,8 +191,9 @@ function ChoresWheel:showPlacer() --on the focus of planting displays the placer
       local deployplacer = SpawnPrefab(placer_name)
       table.insert( self.placers, deployplacer)
       deployplacer.components.placer:SetBuilder(ThePlayer, nil, placer_item)
+      deployplacer.offset = Vector3( 3 + xOff * placerGap, 0, zOff * placerGap)
 
-      local function _testfn(pt)
+      deployplacer.components.placer.testfn = function(pt)
         local test_item = Inst(ThePlayer):inventory_GetActiveItem()
 
         if _find_placer(test_item) == false then
@@ -216,29 +202,22 @@ function ChoresWheel:showPlacer() --on the focus of planting displays the placer
         return test_item ~= nil and Inst(test_item):inventoryitem_CanDeploy(pt)
       end
 
-      deployplacer.components.placer.testfn = _testfn
-
-      -- deployplacer:RemoveComponent("placer")
-      -- deployplacer:AddComponent("placer_orig")
-      -- deployplacer.components.placer = deployplacer.components.placer_orig
-
-      local function _replace(self, dt)
-
+      deployplacer.components.placer.OnUpdate = function(self, dt)
         self.can_build = self.testfn == nil or self.testfn(self.inst:GetPosition())
         local color = self.can_build and Vector3(.25,.75,.25) or Vector3(.75,.25,.25)
-        -- debug('SetAddColour', color.x , color.y , self.can_build, self.testfn)
-        self.inst.AnimState:SetAddColour(color.x, color.y, color.z ,0)
-
+        self.inst.AnimState:SetAddColour(color.x, color.y, color.z, 0)
       end
-      deployplacer.components.placer.OnUpdate = _replace
 
-      local function _reposition(self)
-        local pos = Vector3(ThePlayer.Transform:GetWorldPosition())
-        pos = Vector3( math.floor(pos.x), math.floor(pos.y), math.floor(pos.z))
-        self.Transform:SetPosition((pos + self.offset ):Get())
+      deployplacer.reposition = function(self)
+        local pos = ThePlayer:GetPosition()
+        pos = Vector3( math.floor(pos.x), 0, math.floor(pos.z))
+        self.Transform:SetPosition((pos + self.offset):Get())
+
+        if self.fixedcameraoffset ~= nil then
+          local rot = self.fixedcameraoffset - TheCamera:GetHeading()
+          self.inst.Transform:SetRotation(rot)
+        end
       end
-      deployplacer.offset = Vector3( (xOff -1) * placerGap  , 0, (zOff-1) * placerGap)
-      deployplacer.reposition = _reposition
       deployplacer:reposition()
       deployplacer.components.placer:OnUpdate(0)
 

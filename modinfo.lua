@@ -1,6 +1,6 @@
 name = "To Do Chores"
 author = "phate09, taichunmin"
-version = "1.5.1"
+version = "1.5.2"
 forumthread = "https://github.com/phate09/ToDoChores"
 description = "version: "..version.."\n\nAutomate gathering, chopping, digging, planting, fertilizing, traping and drying!\n\n[Usage]\n* Press key V to toggle chores wheel\n* Press O to open in-game settings\n\nPlease report bug at: "..forumthread
 
