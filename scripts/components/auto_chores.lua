@@ -700,7 +700,7 @@ function AutoChores:GetPlanterAction()
       for k, placer in pairs(self.task_placer) do
         local pos = placer:GetPosition()
         if Inst(seed):inventoryitem_CanDeploy(pos) then
-          return BufferedAction( self.inst, nil, ACTIONS.DEPLOY, seed, pos)
+          return BufferedAction(self.inst, nil, ACTIONS.DEPLOY, seed, pos, nil, nil, nil, placer.Transform:GetRotation())
         end
       end
     end
