@@ -23,7 +23,6 @@ function modmain()
   -- ensure ThePlayer and widgets/controls exists
   if GLOBAL.ThePlayer and addChoresControls and chores == nil then
     modimport("scripts/components/ChoresHelpers")
-    -- modimport("components/ChinesePlus")
     modimport("scripts/widgets/chores")
     chores = addChoresControls:AddChild(Chores())
     modimport("scripts/widgets/optionscreen")
@@ -36,8 +35,5 @@ function modmain()
         if TheInput:IsKeyDown(KEY_ALT) then TheFrontEnd:PushScreen(OptionScreen(addChoresControls)) else chores:Toggle() end
       end
     end)
-
-    print('keyHandler:')
-    Inspect(keyHandler)
   end
 end

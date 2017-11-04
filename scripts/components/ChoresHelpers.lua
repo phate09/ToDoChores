@@ -291,11 +291,9 @@ function DebugLog(...)
   if not DEBUG then return end
 
   local args = {...}
-  local logstr = ''
   for ik, iv in pairs(args) do
-    logstr = logstr .. '\n' .. DataDumper(self.opts, nil, fastmode)
+    print(tostring(iv))
   end
-  print(logstr)
 end
 
 local DiffPrintCache = {}

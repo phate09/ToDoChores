@@ -4,6 +4,7 @@ local ChoresPlugin = Class(function(self)
   self.isTaskDoing = false
   self.placers = nil
   self.taskPlacers = nil
+  self.gap = 0
 
   -- options
   self.opt = {
