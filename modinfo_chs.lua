@@ -1,8 +1,8 @@
 name = "家务小助手"
 author = "phate09, taichunmin"
-version = "1.5.2"
+version = "2.0"
 forumthread = "https://github.com/phate09/ToDoChores"
-description = "版本: "..version.."\n\n自动采集、砍树、挖掘、种树、施肥、放陷阱、晒肉干！\n\n[预设使用方法]\n* 使用 V 来开启工作面板\n* 使用 O 来开启游戏内设定\n\n如果模组有任何 bug 请回报到："..forumthread
+description = "版本: "..version.."\n\n自动采集、砍树、挖掘、种树、施肥、放陷阱、晒肉干！\n\n[预设使用方法]\n* 预设使用 V 来开启工作面板\n* 预设使用 Alt + V 来开启游戏内设定\n\n如果模组有任何 bug 请回报到："..forumthread
 
 api_version = 10
 
@@ -36,7 +36,7 @@ configuration_options =
   {
     name = "togglekey",
     label = "开关工作面板",
-    hover = "想要使用什么按键来开关家务小助手的工作面板？(这个栏位没办法在游戏中动态修改)",
+    hover = "想要使用什么按键来开关家务小助手的工作面板？(同时按下 Alt 可开启游戏内设定选单)",
     options = keyslist,
     default = "V",
   },
@@ -65,13 +65,13 @@ configuration_options =
     label = "X 轴种植数量",
     hover = "在 X 轴方向自动种植的数量？",
     options = numeric_list,
-    default = 4
+    default = 5
   },
   {
     name = "planting_y",
     label = "Y 轴种植数量",
     hover = "在 Y 轴方向自动种植的数量？",
     options = numeric_list,
-    default = 5
+    default = 4
   }
 }

@@ -8,8 +8,8 @@ Automate gathering, chopping, digging, planting, fertilizing, traping and drying
     1. Select Option (column 2+ is option icon)
     2. Start Chores (column 1 is start chores icon)
     3. Don't Close Widget while do chores
-    4. after task end (or when you want), close widget ( Key "V")
-* Press O to open in-game settings
+    4. after task end (or when you want), close widget ( Key "V" )
+* Press Alt + V to open in-game settings
     1. Size of the planting batch
     2. Chop down only adult trees
     3. Prefer tools made of gold when crafting new tools
@@ -73,11 +73,17 @@ The other is option of chores.
 
 # Planned Changes and ideas
 
-* [ ] Actions as checkboxes: the actions are going to be toggleable so that the character will perform any actions turned on. (Picking up carrots while shoveling saplings? Want to dig but not pick? etc)
-* [ ] Auto Cooking?
-* [ ] Auto Harvest fields?
+Watch [issue](https://github.com/phate09/ToDoChores/issues)
 
 # Changes Log
+
+### 2.0
+
+* refactoring mod code and use plugins to improve code readability
+* save enabled task option
+* tree seed and pickable plant position now always on upper of screen
+* dig stump now move to dig task (original in chop task)
+* change in game menu key to Alt + V (key V is configurable)
 
 ### 1.5
 

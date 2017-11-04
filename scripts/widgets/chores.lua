@@ -1,259 +1,509 @@
-local Widget = require "widgets/widget"
-local ImageButton = require "widgets/imagebutton"
-local Image = require "widgets/image"
-local Inst = require "chores-lib.instance"
-local Inspect = require "inspect"
-local modname = KnownModIndex:GetModActualName("To Do Chores [Forked]")
-local CONFIG
+-- load dependencies
+local Widget = require("widgets/widget")
+local ImageButton = require("widgets/imagebutton")
+local Image = require("widgets/image")
 
-CW = nil
-
-local PLACER_GAP = { -- only allow integer, no float point number
-  pinecone = 2,
-  acorn = 2,
-  twiggy_nut=2,
-  marblebean=2,
-  dug_grass = 1,
-  dug_berrybush = 2,
-  dug_sapling = 1
-}
-local ATLASINV = "images/inventoryimages.xml"
-local MAX_HUD_SCALE = 1.25
-local ChoresWheel = Class(Widget, function(self)
+-- Class Chores
+Chores = Class(Widget, function (self)
+  -- parents constructor
   Widget._ctor(self, "Chores")
 
+  self.opts = {}
+  self.skipUpdatePC = 0
+  self.updatingLv = 0 -- level of StartUpdating, maintained by IncUpdatingLv()
+  self.doingTask = nil -- maintained by OnStartTask(), OnStopTask()
+  self.optsFile = modname .. "_opts"
+  self.skipChoresOnControl = {
+    CONTROL_ACTION,
+    CONTROL_ATTACK,
+    CONTROL_PRIMARY,
+    CONTROL_SECONDARY,
+  }
+  self.actionsToCtrl = {
+    [ACTIONS.CHECKTRAP] = CONTROL_PRIMARY,
+    [ACTIONS.DEPLOY] = CONTROL_CONTROLLER_ACTION,
+    [ACTIONS.DROP] = CONTROL_PRIMARY,
+    [ACTIONS.DRY] = CONTROL_PRIMARY,
+    [ACTIONS.FERTILIZE] = CONTROL_PRIMARY,
+  }
+  -- hint devloper that action is not suitable for some control rpc
+  self.controlToStr = {
+    CONTROL_PRIMARY = "CONTROL_PRIMARY",
+    CONTROL_SECONDARY = "CONTROL_SECONDARY",
+    CONTROL_ACTION = "CONTROL_ACTION",
+    CONTROL_CONTROLLER_ALTACTION = "CONTROL_CONTROLLER_ALTACTION",
+    CONTROL_CONTROLLER_ACTION = "CONTROL_CONTROLLER_ACTION",
+  }
+
+  self:InitPlugin()
+  self:InjectInput()
+  self:InjectGetActionButtonAction()
+  self:Render()
+  self:LoadOpts()
+
+  self:Hide()
+
+  DebugLog('Chores Inited')
+end)
+
+local function PluginImport(pluginName)
+  pluginName = "scripts/plugins/"..pluginName
+  DebugLog("PluginImport: "..env.MODROOT..pluginName)
+  if string.sub(pluginName, #pluginName-3,#pluginName) ~= ".lua" then
+    pluginName = pluginName..".lua"
+  end
+  local result = kleiloadlua(env.MODROOT..pluginName)
+  if result == nil then
+    error("Error in PluginImport: "..pluginName.." not found!")
+  elseif type(result) == "string" then
+    error("Error in PluginImport: "..ModInfoname(modname).." importing "..pluginName.."!\n"..result)
+  else
+    setfenv(result, env.env)
+    result()
+  end
+end
+
+function Chores:InitPlugin ()
+  self.plugins = {}
+
+  local pluginNames = {"axe", "pickaxe", "backpack", "shovel", "book_gardening", "poop", "trap", "smallmeat_dried"}
+
+  for _, pluginName in pairs(pluginNames) do
+    DebugLog('loading ChoresPlugin:'..pluginName)
+    choresplugin = nil
+    PluginImport(pluginName)
+    if choresplugin then
+      self.plugins[pluginName] = choresplugin
+      self.opts[pluginName] = choresplugin:GetOpt()
+      DebugLog('loading ChoresPlugin:'..pluginName..' success!')
+    end
+  end
+end
+
+function Chores:Render()
   self:SetHAnchor(ANCHOR_LEFT)
   self:SetVAnchor(ANCHOR_BOTTOM)
   self:SetScaleMode(SCALEMODE_PROPORTIONAL)
   self:SetMaxPropUpscale(MAX_HUD_SCALE)
 
-  self.root = self:AddChild(Image("images/fepanels.xml","panel_mod1.tex"))
-  self.root:SetTint(1,1,1,0.5)
-
-  ThePlayer.Inspect = Inspect
-
-  CW = self.root
-
-  self.flag ={
-    axe = {pinecone=true},
-    pickaxe = {goldnugget=true},
-    shovel = {dug_grass=true, dug_berrybush=true, dug_sapling=true},
-    backpack = {cutgrass=true, berries=true, twigs=true, flint=true, green_cap=true, carrot=true, guano=true},
-    book_gardening = {dug_grass=true},
-    guano = {fertilizer=true},
-    trap = {rabbit=true, smallmeat=true, froglegs=true, silk=true, spidergland=true, monstermeat=true},
-    smallmeat_dried = {smallmeat=true, meat=true}
-  }
-
-  self.layout ={
-    {"axe", "pinecone", "charcoal", "shovel"},
-    {"pickaxe", "nitre","goldnugget","rocks","ice","moonrocknugget","marble"},
-    {"backpack", "flint", "cutgrass", "twigs", "berries","green_cap", "carrot", "petals", "guano"},
-    {"shovel", "dug_grass", "dug_berrybush", "dug_sapling"},
-    {"book_gardening", "dug_grass", "dug_berrybush", "dug_sapling", "pinecone","acorn","twiggy_nut", "marblebean"},
-    {"guano", "poop", "spoiled_food", "rottenegg", "fertilizer", "glommerfuel"},
-    {"trap", "rabbit", "smallmeat", "froglegs", "silk", "spidergland", "monstermeat", "spoiled_food"},
-    {"smallmeat_dried", "smallmeat", "meat", "monstermeat", "froglegs", "fish", "drumstick", "eel", "batwing"}
-  }
+  self.root = self:AddChild( Image("images/fepanels.xml", "panel_mod1.tex") )
+  self.root:SetTint(1, 1, 1, 0.5)
 
   self.root.btns = {}
 
-  local x,y,rowcnt,colcnt = 0, 0, 0, 0
-  for i, row in pairs(self.layout) do
-    if i > rowcnt then rowcnt = i end
-    local task = row[1]
+  local x,y,rowcnt,colcnt = 70, 0, 0, 0
+  for task, pluginCfg in pairs(self.opts) do
     self.root.btns[task] = {}
-    for inx, icon in pairs(row) do
-      if inx > colcnt then colcnt = inx end
-      local btn = self:MakeBtn(task, icon, inx==1)
-      btn:SetPosition( x, y)
+    local btnTask = self:MakeBtn(task, task, true)
+    btnTask:SetPosition(0, y)
+    local inx = 0
+    for icon, enable in pairs(pluginCfg) do
+      local btn = self:MakeBtn(task, icon, false)
+      btn:SetPosition(x, y)
       x = x + 45
-      if inx == 1 then x = x + 25 end
+      inx = inx + 1
     end
     y = y - 50
-    x = 0
+    x = 70
+    colcnt = math.max(colcnt, inx)
+    rowcnt = rowcnt + 1
   end
 
   self.root:SetPosition(125, 100 + 50 * rowcnt)
   self.root:SetSize(25 + 45 * colcnt, 50 * rowcnt)
-
-end)
-function ChoresWheel:SetEnv(newEnv)
-  self.env = newEnv
-  self:UpdateSettings()
 end
-function ChoresWheel:UpdateSettings()
-  local config = KnownModIndex:GetModConfigurationOptions_Internal(self.env.modname, false)
-  CONFIG = {}
-  for i, v in pairs(config) do
-    if v.saved ~= nil then
-      CONFIG[v.name] = v.saved
-    else
-      CONFIG[v.name] = v.default
+
+-- creates a button
+function Chores:MakeBtn(task, icon, isTaskBtn)
+  local me = self
+  local btn = me.root:AddChild(ImageButton("images/inventoryimages.xml", icon .. ".tex"))
+  local plugin = me.plugins[task]
+
+  me.root.btns[task][icon] = btn
+  btn:SetNormalScale(0.67, 0.67, 0.67) -- 63 * 0.67 = 42
+  btn:SetFocusScale(0.76, 0.76, 0.76) -- 63 * 0.76 = 48
+
+  if isTaskBtn then -- Task Button
+    btn.image:SetTint(1, 1, 1, 1)
+    if plugin.OnTaskGainFocus then
+      local originalFn = btn.OnGainFocus
+      btn.OnGainFocus = function(...)
+        originalFn(...)
+        plugin:OnTaskGainFocus()
+      end
     end
+    if plugin.OnTaskLoseFocus then
+      local originalFn = btn.OnLoseFocus
+      btn.OnLoseFocus = function(...)
+        originalFn(...)
+        plugin:OnTaskLoseFocus()
+      end
+    end
+    if plugin.OnStartTask then
+      btn:SetOnClick(function()
+        me:OnStartTask(task)
+      end)
+    end
+  else -- Option Button
+    me:SetBtnStatus(task, icon, me.opts[task][icon])
+    me.root.btns[task][icon] = btn
+    btn:SetOnClick(function() me:OnOptClick(task, icon) end)
   end
-  -- print('AutoChores CONFIG: '..Inspect(CONFIG))
-end
-function ChoresWheel:Toggle()--toggle visibility of the widget
-  if self.shown then
-    self:Hide()
 
-    ThePlayer.components.auto_chores:ForceStop()
-  else
-    self:Show()
+  return btn
+end
+
+function Chores:OnOptClick(task, icon)
+  local plugin = self.plugins[task]
+  if not plugin then return end
+  local btnChanged = plugin.OnOptClick and plugin:OnOptClick(icon) or {icon}
+  for _, iv in pairs(btnChanged) do
+    self:SetBtnStatus(task, iv)
   end
-  print("TheNet:GetIsServer():"..tostring(TheNet:GetIsServer()))
-  print("TheNet:GetIsClient():"..tostring(TheNet:GetIsClient()))
 end
 
-function ChoresWheel:SetBtnValue(task, icon, value)
+function Chores:SetBtnStatus(task, icon, status)
+  if status == nil then status = (not self.opts[task][icon]) end
+
   local btn = self.root.btns[task][icon]
-  if value == nil then value = (not self.flag[task][icon]) end
-  self.flag[task][icon] = value
-  if value then
+  self.opts[task][icon] = status
+  if status then
     btn.image:SetTint(1, 1, 1, 1)
   else
     btn.image:SetTint(.2, .2, .2, 1)
   end
 end
 
-function ChoresWheel:MakeBtn(task, icon, isTaskBtn)--creates a button
-  local btn = self.root:AddChild(ImageButton(ATLASINV, icon .. ".tex"))
-  local widget = self
-  widget.root.btns[task][icon] = btn
-  btn:SetNormalScale(0.67, 0.67, 0.67) -- 63 * 0.67 = 42
-  btn:SetFocusScale(0.76, 0.76, 0.76) -- 63 * 0.76 = 48
-
-  if isTaskBtn then -- task btn
-    if task == "book_gardening" then
-      local _OnGainFocus = btn.OnGainFocus
-      btn.OnGainFocus = function(...)
-        _OnGainFocus(...)
-        widget:showPlacer()
-      end
-      local _OnLoseFocus = btn.OnLoseFocus
-      btn.OnLoseFocus = function(...)
-        _OnLoseFocus(...)
-        widget:hidePlacer()
-      end
-    end
-    btn:SetOnClick(function()
-      widget:DoTask(task)
-    end)
-    btn.image:SetTint(1, 1, 1, 1)
-  else -- flag btn
-    btn:SetOnClick(function()
-      if task == "book_gardening" then -- radio btn
-        for ik, iv in pairs(widget.flag[task]) do
-          if iv then widget:SetBtnValue(task, ik, false) end
-        end
-      end
-      widget:SetBtnValue(task, icon)
-    end)
-    widget:SetBtnValue(task, icon, widget.flag[task][icon] == true)
-  end
-
-  return btn
+-- save opts on hide
+function Chores:SaveOpts()
+  -- copy from modindex.lua:168
+  local fastmode = true
+  local data = DataDumper(self.opts, nil, fastmode)
+  local insz, outsz = TheSim:SetPersistentString(self.optsFile, data, ENCODE_SAVES, function() DebugLog("Chores:SaveOpts() saved " .. self.optsFile) end)
 end
 
-function ChoresWheel:showPlacer() --on the focus of planting displays the placers
-  if self.placers ~= nil then return end
-  self.placers = {}
-
-  local prefab_name = nil
-  for prefab, flag in pairs(self.flag["book_gardening"]) do
-    if flag then prefab_name = prefab end
-  end
-  if prefab_name == nil then return end
-
-  local placerGap = PLACER_GAP[prefab_name]
-
-  local function _find_placer (item)
-    if item == nil then return false end
-    if prefab_name == "dug_berrybush" and (item.prefab == "dug_berrybush2" or item.prefab == "dug_berrybush_juicy") then
-      return true
+-- save opts on game start
+function Chores:LoadOpts()
+  TheSim:GetPersistentString(self.optsFile, function (load_success, str)
+    if load_success == true then
+      local success, savedata = RunInSandboxSafe(str)
+      if success and string.len(str) > 0 and savedata ~= nil then
+        self:ApplyOpts(savedata)
+        DebugLog ("Chores:LoadOpts() loaded "..self.optsFile)
+      else
+        DebugLog ("Chores:LoadOpts() Parse Error "..self.optsFile)
+        if string.len(str) > 0 then
+          DebugLog("File str is ["..str.."]")
+        end
+      end
+    else
+      DebugLog ("Chores:LoadOpts() Could not load "..self.optsFile)
     end
-    return item.prefab == prefab_name
-  end
+  end)
+end
 
-  local placer_item = Inst(ThePlayer):inventory_FindItems(_find_placer)[1]
-  if placer_item == nil or Inst(placer_item):inventoryitem() == nil then return end
-
-  local placer_name = Inst(placer_item):inventoryitem_GetDeployPlacerName()
-
-  self:StartUpdating()
-
-  local planting_x = CONFIG.planting_x
-  local planting_y = CONFIG.planting_y
-	print("showing "..planting_x.."x"..planting_y.." grid")
-  for xOff = 0, planting_x-1, 1 do
-    for zOff = 0, planting_y-1, 1 do
-      local deployplacer = SpawnPrefab(placer_name)
-      table.insert( self.placers, deployplacer)
-      deployplacer.components.placer:SetBuilder(ThePlayer, nil, placer_item)
-      deployplacer.offset = Vector3( 3 + xOff * placerGap, 0, zOff * placerGap)
-
-      deployplacer.components.placer.testfn = function(pt)
-        local test_item = Inst(ThePlayer):inventory_GetActiveItem()
-
-        if _find_placer(test_item) == false then
-          test_item = Inst(ThePlayer):inventory_FindItems(_find_placer)[1]
-        end
-        return test_item ~= nil and Inst(test_item):inventoryitem_CanDeploy(pt)
+-- batch apply opts when load success
+function Chores:ApplyOpts(newOpts)
+  for task, iv in pairs(newOpts) do
+    if self.plugins[task] then
+      for icon, enable in pairs(iv) do
+        if self.opts[task] ~= nil and self.opts[task][icon] ~= nil and enable ~= self.opts[task][icon] then self:OnOptClick(task, icon) end
       end
-
-      deployplacer.components.placer.OnUpdate = function(self, dt)
-        self.can_build = self.testfn == nil or self.testfn(self.inst:GetPosition())
-        local color = self.can_build and Vector3(.25,.75,.25) or Vector3(.75,.25,.25)
-        self.inst.AnimState:SetAddColour(color.x, color.y, color.z, 0)
-      end
-
-      deployplacer.reposition = function(self)
-        local pos = ThePlayer:GetPosition()
-        pos = Vector3( math.floor(pos.x), 0, math.floor(pos.z))
-        self.Transform:SetPosition((pos + self.offset):Get())
-
-        if self.fixedcameraoffset ~= nil then
-          local rot = self.fixedcameraoffset - TheCamera:GetHeading()
-          self.inst.Transform:SetRotation(rot)
-        end
-      end
-      deployplacer:reposition()
-      deployplacer.components.placer:OnUpdate(0)
-
     end
   end
 end
 
-function ChoresWheel:hidePlacer()--remove placers on lose focus of planting
-  if self.placers == nil then return end
-  for k, v in pairs(self.placers) do
-    v:Remove()
-  end
-  self:StopUpdating()
-  self.placers = nil
-end
-
-
-function ChoresWheel:DoTask(task)
---	print("do task"..task)
-  --saves self.flags into flags
-  local flags = {}
-  for key, flag in pairs(self.flag[task]) do
-    flags[key] = flag
-  end
-
-  ThePlayer.components.auto_chores:SetTask(task, flags, self.placers)
-  self.placers = nil
-end
-
-
-function ChoresWheel:OnUpdate(dt)
-  if self.placers == nil then return end
-  for k, v in pairs(self.placers) do
-    v:reposition()
-    v.components.placer:OnUpdate(dt)
+-- toggle visibility of the widget
+function Chores:Toggle()
+  if self:IsVisible() then
+    self:Hide()
+    self:OnForceStop()
+    self:SaveOpts()
+  else
+    self:Show()
   end
 end
 
-return ChoresWheel
+function Chores:IncUpdatingLv(inc)
+  if inc then
+    local newUpdatingLv = self.updatingLv + inc
+    if self.updatingLv < 1 and newUpdatingLv > 0 then
+      self:StartUpdating()
+    elseif self.updatingLv > 0 and newUpdatingLv < 1 then
+      self:StopUpdating()
+    end
+    modassert(newUpdatingLv > -1, "newUpdatingLv must larger then -1, cur = " .. newUpdatingLv)
+    self.updatingLv = math.max(0, newUpdatingLv)
+  end
+  return self.updatingLv
+end
+
+function Chores:OnStartTask(task)
+  DebugLog('start task: '..task)
+
+  -- stop previous task
+  self:OnStopTask()
+
+  -- start new task
+  self.doingTask = task
+  self.plugins[task]:OnStartTask()
+  self:IncUpdatingLv(1)
+end
+
+function Chores:OnStopTask()
+  if self.doingTask == nil then return end
+
+  DebugLog('stop task: '..self.doingTask)
+
+  self:IncUpdatingLv(-1)
+  self.plugins[self.doingTask]:OnStopTask()
+  self.doingTask = nil
+end
+
+function Chores:OnForceStop()
+  for _, plugin in pairs(self.plugins) do
+    if plugin.OnForceStop then plugin:OnForceStop() end
+  end
+  self:OnStopTask()
+  if ThePlayer.components.locomotor then
+    ThePlayer.components.locomotor:Clear()
+  end
+end
+
+function Chores:OnUpdate(dt)
+  for _, plugin in pairs(self.plugins) do
+    if plugin.OnUpdate then plugin:OnUpdate() end
+  end
+  self:OnUpdatePC(dt)
+end
+
+function Chores:OnUpdatePC(dt)
+  -- no task
+  if self.doingTask == nil then return end
+
+  local pc = ThePlayer.components.playercontroller
+
+  -- Don't want to spam the action button before the server actually starts the buffered action
+  -- Also check if playercontroller is enabled
+  if (not pc.ismastersim and (pc.remote_controls[CONTROL_ACTION] or 0) > 0) or not pc:IsEnabled() then return end
+
+  -- copy from playercontroller.lua:369
+  if not pc:IsEnabled() or IsPaused() or pc:IsBusy() then return end
+
+  -- hands are full!
+  if ThePlayer.replica.inventory:IsHeavyLifting() and not (ThePlayer.replica.rider ~= nil and ThePlayer.replica.rider:IsRiding()) then return end
+
+  -- copy from playercontroller.lua:369
+  if pc:IsDoingOrWorking() then return end
+
+  -- copy from playercontroller.lua:1771
+  local isidle = ThePlayer:HasTag("idle")
+  if ThePlayer.sg ~= nil then
+    isidle = ThePlayer.sg:HasStateTag("idle") or (isidle and ThePlayer:HasTag("nopredict"))
+  end
+  if not isidle then return end
+
+  if self.skipUpdatePC > 0 then
+    self.skipUpdatePC = math.max(0, self.skipUpdatePC - 1)
+    return
+  end
+
+  -- get plugin action
+  local plugin = self.plugins[self.doingTask]
+  local buffaction = plugin:GetAction()
+  DebugLog(tostring(buffaction))
+
+  -- if no action then stop the task
+  if not buffaction then self:OnStopTask() end
+  self:DoAction(buffaction)
+end
+
+function Chores:DoAction(buffaction)
+  local pc = ThePlayer.components.playercontroller
+  if not buffaction then return end
+
+  -- when an action has failed stops the loop
+  buffaction:AddFailAction(function()
+    error("buffaction failed: ")
+    error("tostring: "..tostring(buffaction))
+    error("Inspect: "..Inspect(buffaction))
+    if buffaction.control and self.controlToStr[buffaction.control] then
+      error("If this action never success, maybe this action not suitable for " .. self.controlToStr[buffaction.control] .. " RPC.")
+    end
+    self:OnStopTask()
+  end)
+
+  if buffaction.control == nil then
+    -- some special RPC actions
+    if buffaction.action == ACTIONS.BUILD then -- build recipe
+      buffaction.distance = 1
+      RpcMakeRecipeFromMenu(buffaction.recipe)
+    elseif buffaction.action == ACTIONS.EQUIP then -- equip invobject
+      RpcUseItemFromInvTile(buffaction.invobject)
+      return -- equip don't need to do action, so return directly
+    elseif self.actionsToCtrl[buffaction.action] then -- ACTIONS to Ctrl
+      buffaction.control = self.actionsToCtrl[buffaction.action]
+    else -- default to CONTROL_ACTION
+      buffaction.control = CONTROL_ACTION
+    end
+  end
+
+  if buffaction and buffaction.control then
+    local ctrl = buffaction.control
+    if ctrl == CONTROL_PRIMARY then
+      buffaction = self:RPC_PRIMARY(buffaction)
+    elseif ctrl == CONTROL_SECONDARY then
+      buffaction = self:RPC_SECONDARY(buffaction)
+    elseif ctrl == CONTROL_ACTION then
+      buffaction = self:RPC_ACTION(buffaction)
+    elseif ctrl == CONTROL_CONTROLLER_ALTACTION then
+      buffaction = self:RPC_CONTROLLER_ALTACTION(buffaction)
+    elseif ctrl == CONTROL_CONTROLLER_ACTION then
+      buffaction = self:RPC_CONTROLLER_ACTION(buffaction)
+    end
+  end
+
+  pc:DoAction(buffaction)
+end
+
+function Chores:RPC_PRIMARY(act)
+  local pc = ThePlayer.components.playercontroller
+  -- copy from playercontroller.lua:2596
+  if pc.ismastersim then
+    ThePlayer.components.combat:SetTarget(nil)
+  else
+    local position = act.pos
+    local mouseover = act.action ~= ACTIONS.DROP and FindEntityByPos(position, 0.1) or nil
+    local controlmods = pc:EncodeControlMods()
+    if pc.locomotor == nil then
+      pc.remote_controls[CONTROL_PRIMARY] = 0
+      SendRPCToServer(RPC.LeftClick, act.action.code, position.x, position.z, mouseover, nil, controlmods, act.action.canforce, act.action.mod_name)
+    elseif act.action ~= ACTIONS.WALKTO and pc:CanLocomote() then
+      act.preview_cb = function()
+        pc.remote_controls[CONTROL_PRIMARY] = 0
+        local isreleased = not TheInput:IsControlPressed(CONTROL_PRIMARY)
+        SendRPCToServer(RPC.LeftClick, act.action.code, position.x, position.z, mouseover, isreleased, controlmods, nil, act.action.mod_name)
+      end
+    end
+  end
+  return act
+end
+
+function Chores:RPC_SECONDARY(act)
+  local pc = ThePlayer.components.playercontroller
+  -- copy from playercontroller.lua:2684
+  if not pc.ismastersim then
+    local position = act.pos
+    local mouseover = FindEntityByPos(position, 0.1)
+    local controlmods = pc:EncodeControlMods()
+    if pc.locomotor == nil then
+      pc.remote_controls[CONTROL_SECONDARY] = 0
+      SendRPCToServer(RPC.RightClick, act.action.code, position.x, position.z, mouseover, act.rotation ~= 0 and act.rotation or nil, nil, controlmods, act.action.canforce, act.action.mod_name)
+    elseif act.action ~= ACTIONS.WALKTO and pc:CanLocomote() then
+      act.preview_cb = function()
+        pc.remote_controls[CONTROL_SECONDARY] = 0
+        local isreleased = not TheInput:IsControlPressed(CONTROL_SECONDARY)
+        SendRPCToServer(RPC.RightClick, act.action.code, position.x, position.z, mouseover, act.rotation ~= 0 and act.rotation or nil, isreleased, controlmods, nil, act.action.mod_name)
+      end
+    end
+  end
+  return act
+end
+
+function Chores:RPC_ACTION(act)
+  local pc = ThePlayer.components.playercontroller
+  -- copy from playercontroller.lua:1328
+  if pc.locomotor == nil then
+    pc.remote_controls[CONTROL_ACTION] = BUTTON_REPEAT_COOLDOWN
+    SendRPCToServer(RPC.ActionButton, act.action.code, act.target, nil, act.action.canforce, act.action.mod_name)
+  elseif pc:CanLocomote() then
+    if act.action ~= ACTIONS.WALKTO then
+      act.preview_cb = function()
+        pc.remote_controls[CONTROL_ACTION] = BUTTON_REPEAT_COOLDOWN
+        local isreleased = not TheInput:IsControlPressed(CONTROL_ACTION)
+        SendRPCToServer(RPC.ActionButton, act.action.code, act.target, isreleased, nil, act.action.mod_name)
+      end
+    end
+    return act
+  end
+  return act
+end
+
+function Chores:RPC_CONTROLLER_ALTACTION(act)
+  local pc = ThePlayer.components.playercontroller
+  -- copy from playercontroller.lua:630
+  local obj = act.target
+  if pc.ismastersim then
+    ThePlayer.components.combat:SetTarget(nil)
+  elseif obj ~= nil then
+    if pc.locomotor == nil then
+      pc.remote_controls[CONTROL_CONTROLLER_ALTACTION] = 0
+      SendRPCToServer(RPC.ControllerAltActionButton, act.action.code, obj, nil, act.action.canforce, act.action.mod_name)
+    elseif pc:CanLocomote() then
+      act.preview_cb = function()
+        pc.remote_controls[CONTROL_CONTROLLER_ALTACTION] = 0
+        local isreleased = not TheInput:IsControlPressed(CONTROL_CONTROLLER_ALTACTION)
+        SendRPCToServer(RPC.ControllerAltActionButton, act.action.code, obj, isreleased, nil, act.action.mod_name)
+      end
+    end
+  elseif pc.locomotor == nil then
+    pc.remote_controls[CONTROL_CONTROLLER_ALTACTION] = 0
+    SendRPCToServer(RPC.ControllerAltActionButtonPoint, act.action.code, act.pos.x, act.pos.z, nil, act.action.canforce, act.action.mod_name)
+  elseif pc:CanLocomote() then
+    act.preview_cb = function()
+      pc.remote_controls[CONTROL_CONTROLLER_ALTACTION] = 0
+      local isreleased = not TheInput:IsControlPressed(CONTROL_CONTROLLER_ALTACTION)
+      SendRPCToServer(RPC.ControllerAltActionButtonPoint, act.action.code, act.pos.x, act.pos.z, isreleased, nil, act.action.mod_name)
+    end
+  end
+  return act
+end
+
+function Chores:RPC_CONTROLLER_ACTION(act)
+  local pc = ThePlayer.components.playercontroller
+  -- copy from playercontroller.lua:523
+  local obj = act.target
+  if pc.ismastersim then
+    ThePlayer.components.combat:SetTarget(nil)
+  elseif act.deployplacer ~= nil then
+    if pc.locomotor == nil then
+      pc.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
+      SendRPCToServer(RPC.ControllerActionButtonDeploy, obj, act.pos.x, act.pos.z, act.rotation ~= 0 and act.rotation or nil)
+    elseif pc:CanLocomote() then
+      act.preview_cb = function()
+        pc.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
+        local isreleased = not TheInput:IsControlPressed(CONTROL_CONTROLLER_ACTION)
+        SendRPCToServer(RPC.ControllerActionButtonDeploy, obj, act.pos.x, act.pos.z, act.rotation ~= 0 and act.rotation or nil, isreleased)
+      end
+    end
+  elseif pc.locomotor == nil then
+    pc.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
+    SendRPCToServer(RPC.ControllerActionButton, act.action.code, obj, nil, act.action.canforce, act.action.mod_name)
+  elseif pc:CanLocomote() then
+    act.preview_cb = function()
+      pc.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
+      local isreleased = not TheInput:IsControlPressed(CONTROL_CONTROLLER_ACTION)
+      SendRPCToServer(RPC.ControllerActionButton, act.action.code, obj, isreleased, nil, act.action.mod_name)
+    end
+  end
+  return act
+end
+
+function Chores:InjectInput()
+  local IsControlPressed_base = TheInput.IsControlPressed
+
+  TheInput.IsControlPressed = function (self, control)
+    if chores.doingTask and control == CONTROL_ACTION then return true end
+    return IsControlPressed_base(self, control)
+  end
+end
+
+function Chores:InjectGetActionButtonAction()
+  local pc = ThePlayer.components.playercontroller
+  local GetActionButtonAction_base = pc.GetActionButtonAction
+
+  pc.GetActionButtonAction = function (self)
+    if chores.doingTask then return nil end
+    return GetActionButtonAction_base(self)
+  end
+end

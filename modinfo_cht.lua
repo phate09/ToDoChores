@@ -1,8 +1,8 @@
 name = "家務小助手"
 author = "phate09, taichunmin"
-version = "1.5.2"
+version = "2.0"
 forumthread = "https://github.com/phate09/ToDoChores"
-description = "版本: "..version.."\n\n自動採集、砍樹、挖掘、種樹、施肥、放陷阱、曬肉乾！\n\n[預設使用方法]\n* 使用 V 來開啟工作面板\n* 使用 O 來開啟遊戲內設定\n\n如果模組有任何 bug 請回報到："..forumthread
+description = "版本: "..version.."\n\n自動採集、砍樹、挖掘、種樹、施肥、放陷阱、曬肉乾！\n\n[預設使用方法]\n* 預設使用 V 來開啟工作面板\n* 預設使用 Alt + V 來開啟遊戲內設定\n\n如果模組有任何 bug 請回報到："..forumthread
 
 api_version = 10
 
@@ -36,7 +36,7 @@ configuration_options =
   {
     name = "togglekey",
     label = "開關工作面板",
-    hover = "想要使用什麼按鍵來開關家務小助手的工作面板？(這個欄位沒辦法在遊戲中動態修改)",
+    hover = "想要使用什麼按鍵來開關家務小助手的工作面板？(同時按下 Alt 可開啟遊戲內設定選單)",
     options = keyslist,
     default = "V",
   },
@@ -65,13 +65,13 @@ configuration_options =
     label = "X 軸種植數量",
     hover = "在 X 軸方向自動種植的數量？",
     options = numeric_list,
-    default = 4
+    default = 5
   },
   {
     name = "planting_y",
     label = "Y 軸種植數量",
     hover = "在 Y 軸方向自動種植的數量？",
     options = numeric_list,
-    default = 5
+    default = 4
   }
 }
