@@ -1,10 +1,11 @@
 name = "To Do Chores"
 author = "phate09, taichunmin"
-version = "1.5.2"
+version = "2.0"
 forumthread = "https://github.com/phate09/ToDoChores"
-description = "version: "..version.."\n\nAutomate gathering, chopping, digging, planting, fertilizing, traping and drying!\n\n[Usage]\n* Press key V to toggle chores wheel\n* Press O to open in-game settings\n\nPlease report bug at: "..forumthread
+description = "version: "..version.."\n\nAutomate gathering, chopping, digging, planting, fertilizing, traping and drying!\n\n[Usage]\n* Press key V to toggle chores wheel (default)\n* Press Alt + V to open in-game settings (default)\n\nPlease report bug at: "..forumthread
 
 api_version = 10
+priority = -10000
 
 dont_starve_compatible = false
 reign_of_giants_compatible = true
@@ -13,7 +14,7 @@ dst_compatible = true
 all_clients_require_mod = false
 client_only_mod = true
 
-server_filter_tags = {"chores", "geometry", "mine", "wood","chop", "AI", "auto"}
+server_filter_tags = {"chores", "AI", "auto", "chop", "pickup", "plant", "mine", "fertilize", "dig", "dry", "trap"}
 
 icon_atlas = "modicon.xml"
 icon = "to-do-chores.tex"
@@ -36,7 +37,7 @@ configuration_options =
   {
     name = "togglekey",
     label = "Open Chores Wheel",
-    hover = "Which button should open the working menu? (Changing this from in-game won't work. Sorry.)",
+    hover = "Which button should open the working menu? (Also Press Alt to open in-game settings)",
     options = keyslist,
     default = "V",
   },
@@ -65,13 +66,13 @@ configuration_options =
     label = "X-axis plant size",
     hover = "How big is the planting square on X axis?",
     options = numeric_list,
-    default = 4
+    default = 5
   },
   {
     name = "planting_y",
     label = "Y-axis plant size",
     hover = "How big is the planting square on Y axis?",
     options = numeric_list,
-    default = 5
+    default = 4
   }
 }
