@@ -1,6 +1,6 @@
 name = "家務小助手"
 author = "phate09, taichunmin"
-version = "2.0"
+version = "2.0.1"
 forumthread = "https://github.com/phate09/ToDoChores"
 description = "版本: "..version.."\n\n自動採集、砍樹、挖掘、種樹、施肥、放陷阱、曬肉乾！\n\n[預設使用方法]\n* 預設使用 V 來開啟工作面板\n* 預設使用 Alt + V 來開啟遊戲內設定\n\n如果模組有任何 bug 請回報到："..forumthread
 

@@ -324,13 +324,12 @@ function Chores:DoAction(buffaction)
 
   -- when an action has failed stops the loop
   buffaction:AddFailAction(function()
-    error("buffaction failed: ")
-    error("tostring: "..tostring(buffaction))
-    error("Inspect: "..Inspect(buffaction))
+    local msg = "buffaction failed: "..tostring(buffaction)
     if buffaction.control and self.controlToStr[buffaction.control] then
-      error("If this action never success, maybe this action not suitable for " .. self.controlToStr[buffaction.control] .. " RPC.")
+      msg = msg .. "\nIf this action never success, maybe this action not suitable for " .. self.controlToStr[buffaction.control] .. " RPC."
     end
-    self:OnStopTask()
+    DebugLog(msg)
+    -- self:OnStopTask()
   end)
 
   if buffaction.control == nil then
@@ -372,8 +371,8 @@ function Chores:RPC_PRIMARY(act)
   if pc.ismastersim then
     ThePlayer.components.combat:SetTarget(nil)
   else
-    local position = act.pos
-    local mouseover = act.action ~= ACTIONS.DROP and FindEntityByPos(position, 0.1) or nil
+    local position = act.pos or act.target:GetPosition()
+    local mouseover = (act.action ~= ACTIONS.DROP and position) and FindEntityByPos(position, 0.1) or nil
     local controlmods = pc:EncodeControlMods()
     if pc.locomotor == nil then
       pc.remote_controls[CONTROL_PRIMARY] = 0
@@ -432,7 +431,7 @@ end
 function Chores:RPC_CONTROLLER_ALTACTION(act)
   local pc = ThePlayer.components.playercontroller
   -- copy from playercontroller.lua:630
-  local obj = act.target
+  local obj = act.invobject
   if pc.ismastersim then
     ThePlayer.components.combat:SetTarget(nil)
   elseif obj ~= nil then
@@ -462,10 +461,10 @@ end
 function Chores:RPC_CONTROLLER_ACTION(act)
   local pc = ThePlayer.components.playercontroller
   -- copy from playercontroller.lua:523
-  local obj = act.target
+  local obj = act.invobject
   if pc.ismastersim then
     ThePlayer.components.combat:SetTarget(nil)
-  elseif act.deployplacer ~= nil then
+  elseif act.action == ACTIONS.DEPLOY then
     if pc.locomotor == nil then
       pc.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
       SendRPCToServer(RPC.ControllerActionButtonDeploy, obj, act.pos.x, act.pos.z, act.rotation ~= 0 and act.rotation or nil)
@@ -473,6 +472,7 @@ function Chores:RPC_CONTROLLER_ACTION(act)
       act.preview_cb = function()
         pc.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
         local isreleased = not TheInput:IsControlPressed(CONTROL_CONTROLLER_ACTION)
+        DebugLog(RPC.ControllerActionButtonDeploy, obj, act.pos.x, act.pos.z, act.rotation ~= 0 and act.rotation or nil, isreleased)
         SendRPCToServer(RPC.ControllerActionButtonDeploy, obj, act.pos.x, act.pos.z, act.rotation ~= 0 and act.rotation or nil, isreleased)
       end
     end
