@@ -1,7 +1,12 @@
+--- To Do Chores Smallmeat Dried Plugin
+-- @module choresPluginSmallmeatDried
+
 local ChoresPlugin = Class(function(self)
   self.isTaskDoing = false
+  self:InitWorld()
+end)
 
-  -- options
+function ChoresPlugin:InitWorld()
   self.opt = {
     smallmeat = true,
     meat = true,
@@ -23,7 +28,7 @@ local ChoresPlugin = Class(function(self)
     monstermeat = "monstermeat",
     meat = "meat",
   }
-end)
+end
 
 function ChoresPlugin:GetAction()
   -- find something can pickup

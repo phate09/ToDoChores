@@ -1,0 +1,7 @@
+version: '2'
+
+services:
+  ldoc:
+    image: registry.gitlab.com/taichunmin/docker-ldoc:latest
+    volumes:
+      - ./:/root

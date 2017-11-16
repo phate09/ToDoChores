@@ -1,3 +1,6 @@
+--- To Do Chores Book Gardening Plugin
+-- @module choresPluginBookGardening
+
 local DEPLOYSPACING_EXTRA = 0.1
 
 local ChoresPlugin = Class(function(self)
@@ -5,8 +8,10 @@ local ChoresPlugin = Class(function(self)
   self.placers = nil
   self.taskPlacers = nil
   self.gap = 0
+  self:InitWorld()
+end)
 
-  -- options
+function ChoresPlugin:InitWorld()
   self.opt = {
     acorn = false,
     dug_berrybush = false,
@@ -33,7 +38,7 @@ local ChoresPlugin = Class(function(self)
   self.recipes = {
     marblebean = "marblebean",
   }
-end)
+end
 
 function ChoresPlugin:GetAction()
   -- find something can pickup
@@ -132,6 +137,13 @@ end
 function ChoresPlugin:PlacerTestFn(pt, rot)
   local mouseover = FindEntityByPos(pt, 0.1)
   local placerItem = FindOnePlayerItem(function (...) return self:CanDeploy(...) end)
+
+  -- if we can make seed, can_build = true and hide all placer
+  if placerItem == nil then
+    for recipeName, icon in pairs(self.recipes) do
+      if self.opt[icon] and CanMakeRecipt(recipeName) then return true, true end
+    end
+  end
   -- if something at point or camera heading not a multiple of 45 then hide
   return placerItem ~= nil and placerItem:IsValid() and placerItem.replica.inventoryitem and placerItem.replica.inventoryitem:CanDeploy(pt, mouseover), mouseover ~= nil or Fcmp(math.fmod(TheCamera:GetHeading(), 45), 0) ~= 0
 end

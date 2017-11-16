@@ -1,3 +1,6 @@
+--- To Do Chores (a Don't Starve Together mod)
+-- @module modmain
+
 -- global variable
 chores = nil
 
@@ -18,7 +21,8 @@ AddClassPostConstruct( "widgets/controls", function (controls)
   modmain()
 end)
 
--- mod main function
+--- mod main function
+-- modmain need after PostConstruct of `widgets/controls` and after ThePlayer PostInit
 function modmain()
   -- ensure ThePlayer and widgets/controls exists
   if GLOBAL.ThePlayer and addChoresControls and chores == nil then

@@ -1,41 +1,66 @@
+--- To Do Chores Pickaxe Plugin
+-- @module choresPluginPickaxe
+
 local ChoresPlugin = Class(function(self)
   self.isTaskDoing = false
+  self:InitWorld()
+end)
 
-  -- options
+function ChoresPlugin:InitWorld()
   self.opt = {
-    nitre = false,
+    fossil_piece = false,
     goldnugget = true,
-    rocks = false,
     ice = false,
-    moonrocknugget = false,
     marble = false,
+    moonrocknugget = false,
+    nitre = false,
+    redgem = true,
+    rocks = false,
   }
 
   self.pickups = {
+    bluegem = "redgem",
     flint = true,
-    rocks = true,
-    nitre = "nitre",
+    fossil_piece = "fossil_piece",
     goldnugget = "goldnugget",
     ice = "ice",
-    moonrocknugget = "moonrocknugget",
     marble = "marble",
     marblebean = "marble",
+    moonrocknugget = "moonrocknugget",
+    nitre = "nitre",
+    redgem = "redgem",
+    rocks = true,
   }
 
   self.mines = {
+    cavein_boulder = "rocks",
+    gargoyle_houndatk = "moonrocknugget",
+    gargoyle_hounddeath = "moonrocknugget",
+    gargoyle_werepigatk = "moonrocknugget",
+    gargoyle_werepigdeath = "moonrocknugget",
+    gargoyle_werepighowl = "moonrocknugget",
+    marblepillar = "marble",
+    marbleshrub = "marble",
+    marbletree = "marble",
     rock1 = "nitre",
-    rock_petrified_tree = "nitre",
     rock2 = "goldnugget",
+    rock_flintless = "rocks",
     rock_ice = "ice",
     rock_moon = "moonrocknugget",
-    rock_flintless = "rocks",
-    marblepillar = "marble",
-    marbletree = "marble",
-    statueharp = "marble",
-    statue_marble = "marble",
-    sculpture_rookbody = "marble",
+    rock_petrified_tree = "nitre",
     sculpture_bishopbody = "marble",
     sculpture_knightbody = "marble",
+    sculpture_rookbody = "marble",
+    stalagmite = "goldnugget",
+    stalagmite_full = "goldnugget",
+    stalagmite_low = "goldnugget",
+    stalagmite_med = "goldnugget",
+    stalagmite_tall = "goldnugget",
+    stalagmite_tall_full = "goldnugget",
+    stalagmite_tall_low = "goldnugget",
+    stalagmite_tall_med = "goldnugget",
+    statue_marble = "marble",
+    statueharp = "marble",
   }
 
   self.emptyAnims = {
@@ -53,7 +78,7 @@ local ChoresPlugin = Class(function(self)
     "grow_short_to_normal",
     "grow_normal_to_tall",
   }
-end)
+end
 
 function ChoresPlugin:GetAction()
   -- find something can pickup
@@ -66,7 +91,7 @@ function ChoresPlugin:GetAction()
 
   -- now we have target, let's ensure tool
   local tool = nil
-  tool, act = EnsureEquipToolOrAction(function(item) return item and item:HasTag('MINE_tool') end)
+  tool, act = EnsureHandToolOrAction(function(item) return item and item:HasTag('MINE_tool') end)
   if act then return act end
 
   -- while tool not found, try to make one or return nil to stop task

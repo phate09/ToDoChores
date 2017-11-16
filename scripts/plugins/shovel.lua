@@ -1,7 +1,12 @@
+--- To Do Chores Shovel Plugin
+-- @module choresPluginShovel
+
 local ChoresPlugin = Class(function(self)
   self.isTaskDoing = false
+  self:InitWorld()
+end)
 
-  -- options
+function ChoresPlugin:InitWorld()
   self.opt = {
     dug_grass = true,
     dug_berrybush = true,
@@ -30,7 +35,7 @@ local ChoresPlugin = Class(function(self)
     berrybush_juicy = "dug_berrybush_juicy",
     sapling = "dug_sapling",
   }
-end)
+end
 
 function ChoresPlugin:GetAction(item)
   -- find something can pickup
@@ -43,7 +48,7 @@ function ChoresPlugin:GetAction(item)
 
   -- now we have target, let's ensure tool
   local tool = nil
-  tool, act = EnsureEquipToolOrAction(function(item) return item and item:HasTag('DIG_tool') end)
+  tool, act = EnsureHandToolOrAction(function(item) return item and item:HasTag('DIG_tool') end)
   if act then return act end
 
   -- while tool not found, try to make one or return nil to stop task

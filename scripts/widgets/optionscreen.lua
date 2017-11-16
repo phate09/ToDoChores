@@ -1,3 +1,6 @@
+--- To Do Chores Option Screen
+-- @module optionScreen
+
 local Screen = require "widgets/screen"
 local Button = require "widgets/button"
 local AnimButton = require "widgets/animbutton"

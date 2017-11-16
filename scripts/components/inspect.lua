@@ -1,3 +1,6 @@
+--- inspect class (careful on use this, it will cause endless recursion)
+-- @module inspect
+
 local inspect ={
   _VERSION = 'inspect.lua 3.1.0',
   _URL     = 'http://github.com/kikito/inspect.lua',
