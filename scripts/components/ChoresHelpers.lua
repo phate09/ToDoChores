@@ -1,3 +1,6 @@
+--- To Do Chores Helper Functions and Variables
+-- @module ChoresHelpers
+
 -- global require
 require = GLOBAL.require
 Inspect = require("components/inspect")
@@ -36,6 +39,7 @@ KnownModIndex = GLOBAL.KnownModIndex
 MAX_HUD_SCALE = GLOBAL.MAX_HUD_SCALE
 ModInfoname = GLOBAL.ModInfoname
 NEWFONT = GLOBAL.NEWFONT
+next = GLOBAL.next
 PI = GLOBAL.PI
 RADIANS = GLOBAL.RADIANS
 RPC = GLOBAL.RPC
@@ -52,6 +56,7 @@ TheFrontEnd = GLOBAL.TheFrontEnd
 TheInput = GLOBAL.TheInput
 ThePlayer = GLOBAL.ThePlayer
 TheSim = GLOBAL.TheSim
+TheWorld = GLOBAL.TheWorld
 UIFONT = GLOBAL.UIFONT
 Vector3 = GLOBAL.Vector3
 
@@ -60,24 +65,41 @@ BUTTON_REPEAT_COOLDOWN = 0.5
 SEE_DIST_LOOT = 5
 SEE_DIST_WORK_TARGET = 25
 DEBUG = false
+IS_CAVE = TheWorld ~= nil and TheWorld:HasTag("cave")
 
-function ToLowerCase(str)
-  if type(str) == "string" then
-    str = str:lower():byte()
+--- Transform togglekey from char to key code
+-- @helper
+-- @param ch the char string
+-- @return (integer) key code (lowercase alphabet)
+function CharToKeyCode(ch)
+  if type(ch) == "string" then
+    return ch:lower():byte()
   end
-  return str
 end
 
+--- is the mod downloaded from workshop?
+-- This func can determine open DebugLog or not.
+-- @helper
+-- @return (boolean)
 function IsWorkshopMod()
   local workshop_prefix = "workshop-"
   return modname:sub( 1, workshop_prefix:len() ) == workshop_prefix
 end
 
+--- Is the current screen default screen?
+-- This function is prevent togglekey to be trigger on non-default screen.
+-- @helper
+-- @return (boolean)
 function IsDefaultScreen()
   local active_screen = TheFrontEnd:GetActiveScreen()
-  return active_screen ~= nil and active_screen.name:find("HUD") ~= nil
+  return active_screen and active_screen.name and active_screen.name.find and active_screen.name:find("HUD") ~= nil
 end
 
+--- Reload setting.
+-- On game start or in game setting save will reload.
+-- Game setting will be save to `CONFIG` variable.
+-- @helper
+-- @return (nil)
 function UpdateSettings()
   local config = KnownModIndex:GetModConfigurationOptions_Internal(modname, false)
   env.CONFIG = {}
@@ -88,50 +110,80 @@ function UpdateSettings()
       env.CONFIG[v.name] = v.default
     end
   end
-  env.CONFIG.togglekey = ToLowerCase(env.CONFIG.togglekey)
+  env.CONFIG.togglekey = CharToKeyCode(env.CONFIG.togglekey) or CharToKeyCode('V')
 end
 
+--- Get player's active item.
+-- @helper
+-- @return (table) inventory active item, or (nil)
 function GetPlayerActiveItem()
   return ThePlayer.replica.inventory:GetActiveItem()
 end
 
-function GetAllInventoryItems()
-  return ThePlayer.replica.inventory:GetItems()
-end
-
-function GetAllInventoryEquips()
-  return ThePlayer.replica.inventory:GetEquips()
-end
-
-function GetInventoryOverflowContainer()
+--- Get player's overflow container.
+-- @helper
+-- @return (table) overflow container, or (nil)
+function GetPlayerOverflowContainer()
   return ThePlayer.replica.inventory:GetOverflowContainer()
 end
 
+--- Get player's all invitems. (not include active, equip, overflow)
+-- @helper
+-- @return (table) inventory items, or (nil)
+function GetAllPlayerInvItems()
+  return ThePlayer.replica.inventory:GetItems()
+end
+
+--- Get player's all equip items.
+-- @helper
+-- @return (table) equip items, or (nil)
+function GetAllPlayerEquips()
+  return ThePlayer.replica.inventory:GetEquips()
+end
+
+--- Get player's all overflow items.
+-- @helper
+-- @return (table) overflow items
+function GetAllPlayerOverflowItems()
+  local overflow = GetPlayerOverflowContainer()
+  if not overflow then return {} end
+  return overflow.GetItems and overflow:GetItems() or overflow.slots or {}
+end
+
+--- Get player's all items. (invitems, actives, equips, overflow items)
+-- @helper
+-- @return (table) overflow container, or (nil)
 function GetAllPlayerItems()
   local items = {}
   local activeItem = GetPlayerActiveItem()
   if activeItem then table.insert(items, activeItem) end
-  for k,v in pairs(GetAllInventoryItems()) do table.insert(items, v) end
-  for k,v in pairs(GetAllInventoryEquips()) do table.insert(items, v) end
-
-  local overflow = GetInventoryOverflowContainer()
-  if overflow then
-    local overflowItems = overflow.GetItems and overflow.GetItems() or overflow.slots or nil
-    if overflowItems then
-      for k, v in pairs(overflowItems) do
-        table.insert(items, v)
-      end
-    end
-  end
+  for k,v in pairs(GetAllPlayerInvItems()) do table.insert(items, v) end
+  for k,v in pairs(GetAllPlayerEquips()) do table.insert(items, v) end
+  for k,v in pairs(GetAllPlayerOverflowItems()) do table.insert(items, v) end
   return items
 end
 
+--- Find player's one invitem. (not include active, equip, overflow)
+-- @helper
+-- @param fn A judging function to return boolean represent the item you need or not
 function FindOnePlayerInvItem(fn)
-  for k, v in pairs(GetAllInventoryItems()) do
+  for k, v in pairs(GetAllPlayerInvItems()) do
     if fn(v) then return v end
   end
 end
 
+--- Find player's one overflow item. (not include active, equip, invitem)
+-- @helper
+-- @param fn A judging function to return boolean represent the item you need or not
+function FindOnePlayerOverflowItem(fn)
+  for k, v in pairs(GetAllPlayerOverflowItems()) do
+    if fn(v) then return v end
+  end
+end
+
+--- Find player's one item.
+-- @helper
+-- @param fn A judging function to return boolean represent the item you need or not
 function FindOnePlayerItem(fn)
   local activeItem = GetPlayerActiveItem()
   if fn(activeItem) then return activeItem end
@@ -139,29 +191,38 @@ function FindOnePlayerItem(fn)
   local invItem = FindOnePlayerInvItem(fn)
   if invItem then return invItem end
 
-  for k, v in pairs(GetAllInventoryEquips()) do
+  for k, v in pairs(GetAllPlayerEquips()) do
     if fn(v) then return v end
   end
 
-  local overflow = GetInventoryOverflowContainer()
-  if overflow then
-    local overflowItems = overflow.GetItems and overflow.GetItems() or overflow.slots or nil
-    if overflowItems then
-      for k, v in pairs(overflowItems) do
-        if fn(v) then return v end
-      end
-    end
+  for k, v in pairs(GetAllPlayerOverflowItems()) do
+    if fn(v) then return v end
   end
+
   return nil
 end
 
+--- Find one item to pickup.
+-- This function use `SEE_DIST_LOOT` as pickup range.
+-- @helper
+-- @param fn A judging function to return boolean represent the item you need or not
+-- @return (bufferedaction) action need to do, or (nil)
 function GetClosestPickupAction(fn)
   local tmp = FindEntity(ThePlayer, SEE_DIST_LOOT, fn, {"_inventoryitem"}, {"fire", "smolder", "event_trigger", "INLIMBO", "NOCLICK"})
   -- DebugLog('GetClosestPickupAction:', tmp)
-  if tmp then return BufferedAction(ThePlayer, tmp, ACTIONS.PICKUP) end
+  if tmp then
+    local act = BufferedAction(ThePlayer, tmp, ACTIONS.PICKUP)
+    act.skipUpdatePC = 1
+    return act
+  end
 end
 
-function EnsureEquipToolOrAction(fn)
+--- Ensure player's hand tool is what you need.
+-- @helper
+-- @param fn A judging function to return boolean represent the tool you need or not
+-- @return (handitem) if the current hand is what you need, or (nil)
+-- @return (bufferedaction) action need to do, or (nil)
+function EnsureHandToolOrAction(fn)
   local playerInv = ThePlayer.replica.inventory
   local tmp = nil
 
@@ -173,6 +234,10 @@ function EnsureEquipToolOrAction(fn)
   tmp = FindOnePlayerInvItem(fn)
   if tmp then return nil, BufferedAction(ThePlayer, nil, ACTIONS.EQUIP, tmp) end
 
+  -- item in overflow container
+  tmp = FindOnePlayerOverflowItem(fn)
+  if tmp then return nil, BufferedAction(ThePlayer, nil, ACTIONS.EQUIP, tmp) end
+
   -- item need pickup
   tmp = GetClosestPickupAction(fn)
   if tmp then return nil, tmp end
@@ -181,10 +246,17 @@ function EnsureEquipToolOrAction(fn)
   return nil, nil
 end
 
+--- Return player's active item to original place
+-- @helper
 function ReturnActiveItem()
   ThePlayer.replica.inventory:ReturnActiveItem()
 end
 
+--- Ensure player's activeitem is what you need.
+-- @helper
+-- @param fn A judging function to return boolean represent the item you need or not
+-- @return (activeitem) if the current activeitem is what you need, or (nil)
+-- @return (bufferedaction) action need to do, or (nil)
 function EnsureActiveItem(fn)
   local playerInv = ThePlayer.replica.inventory
 
@@ -193,40 +265,48 @@ function EnsureActiveItem(fn)
   if fn(tmp) then return tmp else ReturnActiveItem() end
 
   -- item in inventory
-  for k, v in pairs(GetAllInventoryItems()) do
+  for k, v in pairs(GetAllPlayerInvItems()) do
     if fn(v) then
       playerInv:TakeActiveItemFromAllOfSlot(k)
       return v
     end
   end
 
-  for k, v in pairs(GetAllInventoryEquips()) do
+  for k, v in pairs(GetAllPlayerEquips()) do
     if fn(v) then
       playerInv:TakeActiveItemFromAllOfSlot(k)
       return v
     end
   end
 
-  local overflow = GetInventoryOverflowContainer()
-  if overflow then
-    local overflowItems = overflow.GetItems and overflow.GetItems() or overflow.slots or nil
-    if overflowItems then
-      for k, v in pairs(overflowItems) do
-        if fn(v) then
-          overflow:TakeActiveItemFromAllOfSlot(k)
-          return v
-        end
-      end
+  local overflow = GetPlayerOverflowContainer()
+  for k, v in pairs(GetAllPlayerOverflowItems()) do
+    if fn(v) then
+      overflow:TakeActiveItemFromAllOfSlot(k)
+      return v
     end
   end
+
   return nil -- need make recipe
 end
 
--- get offset position corresponding the current position and rotation of ThePlayer
+--- Get offset position corresponding the position of player on screen.
+-- @helper
+-- @param xdir x direction amount
+-- @param ydir y direction amount
+-- @return (position) position
 function GetPositionByPlayerDirection(xdir, ydir)
   return ThePlayer:GetPosition() + (TheCamera:GetRightVec() * xdir - TheCamera:GetDownVec() * ydir)
 end
 
+--- Any position version of FindEntity().
+-- @helper
+-- @param pos (Vector3) Center of the circle to find
+-- @param radius (number) Radius of the circle to find
+-- @param fn A judging function to return boolean represent the item you need or not, or (nil)
+-- @param musttags (table) entity must have these tags, or (nil)
+-- @param canttags (table) entity cannot have these tags, or (nil)
+-- @param mustoneoftags (table) entity must have one of these tags, or (nil)
 function FindEntityByPos(pos, radius, fn, musttags, canttags, mustoneoftags)
   local ents = TheSim:FindEntities(pos.x, pos.y, pos.z, radius, musttags, canttags, mustoneoftags)
   for i, v in ipairs(ents) do
@@ -236,6 +316,10 @@ function FindEntityByPos(pos, radius, fn, musttags, canttags, mustoneoftags)
   end
 end
 
+--- Get Deploy Action By DeployPlacer
+-- @helper
+-- @param deployplacer deployplacer
+-- @return (bufferedaction) action need to do, or (nil)
 function GetDeployActionByDeployPlacer(deployplacer)
   local act = nil
   if deployplacer
@@ -251,17 +335,28 @@ function GetDeployActionByDeployPlacer(deployplacer)
   return act
 end
 
+--- Check if player knows recipe and resource enough
+-- @helper
+-- @param recipeName
+-- @return (boolean) can make recipe or not
 function CanMakeRecipt(recipeName)
   local recipe = AllRecipes[recipeName]
   local builder = ThePlayer.replica.builder
   return recipe and builder:KnowsRecipe(recipe.name) and builder:CanBuild(recipe.name) and recipe
 end
 
+--- Make Recipt
+-- @helper
+-- @param recipeName
+-- @return (bufferedaction) action need to do, or (nil)
 function GetMakeReciptAction(recipeName)
   local recipe = CanMakeRecipt(recipeName)
   return recipe and BufferedAction(ThePlayer, nil, ACTIONS.BUILD, nil, nil, recipe.name, 1)
 end
 
+--- RPC: Additional RPC for make recipt
+-- @helper
+-- @param recipeName
 function RpcMakeRecipeFromMenu(recipeName)
   local recipe = CanMakeRecipt(recipeName)
   local builder = ThePlayer.replica.builder
@@ -269,43 +364,95 @@ function RpcMakeRecipeFromMenu(recipeName)
   if recipe and not builder:IsBusy() then builder:MakeRecipeFromMenu(recipe) end
 end
 
+--- RPC: Additional RPC for Use Item From InvTile
+-- @helper
+-- @param item invitem
 function RpcUseItemFromInvTile(item)
   if item and ThePlayer.replica.inventory then
     ThePlayer.replica.inventory:UseItemFromInvTile(item)
   end
 end
 
+--- Check if player has item or can make recipe
+-- @helper
+-- @param fn A judging function to return boolean represent the item you need or not, or (nil)
+-- @param recipeName
+-- @return (boolean) can make recipe or not
 function HasItemOrCanMake(fn, recipeName)
   return (FindOnePlayerItem(fn) or CanMakeRecipt(recipeName)) and true or false
 end
 
+--- Get Left Click Action.
+-- @helper
+-- @param pos
+-- @param target
+-- @return (bufferedaction) action need to do, or (nil)
 function GetLeftClickAction(pos, target)
   return ThePlayer.components.playeractionpicker:GetLeftClickActions(pos, target)[1]
 end
 
+--- Get Right Click Action.
+-- @helper
+-- @param pos
+-- @param target
+-- @return (bufferedaction) action need to do, or (nil)
 function GetRightClickAction(pos, target)
   return ThePlayer.components.playeractionpicker:GetRightClickActions(pos, target)[1]
 end
 
+--- Debug Log, only print on `DEBUG = true`.
+-- @helper
+-- @param ... any data
 function DebugLog(...)
   if not DEBUG then return end
 
   local args = {...}
+  local str = ""
   for ik, iv in pairs(args) do
-    print(tostring(iv))
+    if ik > 1 then str = str .. " " end
+    if type(iv) == "table" then
+      local debug = {}
+      for jk, jv in pairs(iv) do
+        if type(jv) == "function" then
+          debug[jk] = "function"
+        elseif type(jv) == "table" then
+          debug[jk] = "table"
+        elseif type(jv) == "userdata" then
+          debug[jk] = "userdata"
+        elseif type(jv) == "thread" then
+          debug[jk] = "thread"
+        else
+          debug[jk] = jv
+        end
+      end
+      str = str .. Inspect(debug)
+    else
+      str = str .. tostring(iv)
+    end
   end
+  print(str)
 end
 
 local DiffPrintCache = {}
+--- DiffPrint only print if data changed
+-- @helper
+-- @param key a key to distinguish value
+-- @param val a string value to diff print
 function DiffPrint(key, val)
   if not DEBUG then return end
 
-  if type(key) == "string" and type(val) == "string" then
-    if DiffPrintCache[key] ~= val then print(key .. " = " .. val) end
-    DiffPrintCache[key] = val
-  end
+  key = tostring(key)
+  val = tostring(val)
+
+  if DiffPrintCache[key] ~= val then print(key .. " = " .. val) end
+  DiffPrintCache[key] = val
 end
 
+--- Postion rotate.
+-- @helper
+-- @param p (Vector3) postion
+-- @param deg degree
+-- @return (Vector3) Rotated postion
 function Vector3RotateDeg(p, deg)
   return Vector3(
     p.x * math.cos(deg) - p.z * math.sin(deg),
@@ -314,28 +461,44 @@ function Vector3RotateDeg(p, deg)
   )
 end
 
+--- float compare with a deviation `delta`
+-- @helper
+-- @param fa (float) a
+-- @param fb (float) b
+-- @return `-1` on `fa < fb`, `0` on `fa == fb`, `1` on `fa > fb`
 function Fcmp(fa, fb)
   local delta = 0.000001
   local diff = fa - fb
   if diff < -delta then return -1 else return diff > delta and 1 or 0 end
 end
 
+function fprint(filename, data)
+  local fastmode = true
+  filename = modname .. "_DEBUG_" .. filename
+  data = DataDumper(data, nil, fastmode)
+  TheSim:SetPersistentString(filename, data, false, function()
+    print("Saved to " .. filename)
+  end)
+end
+
+function DebugAllWorkable(filename)
+  local CachePrefab = {}
+  local function UniquePrefab(key, item)
+    if item == nil then return end
+    if CachePrefab[key] == nil then CachePrefab[key] = {} end
+    CachePrefab[key][item.prefab] = 1
+  end
+
+  local tags = {"_inventoryitem", "CHOP_workable", "pickable", "DIG_workable", "MINE_workable"}
+  for ik, tag in pairs(tags) do
+    FindEntity(ThePlayer, SEE_DIST_WORK_TARGET, function(...) UniquePrefab(tag, ...) end, {tag})
+  end
+
+  fprint(filename, CachePrefab)
+end
+ThePlayer.DebugAllWorkable = DebugAllWorkable
+-- ThePlayer.DebugAllWorkable("1")
+
 UpdateSettings() -- init setting
 
 if not IsWorkshopMod() then DEBUG = true end -- if not workshop mod then turn on DebugLog()
-
--- local debug = {}
--- for ik, iv in pairs(env) do
---   if type(iv) == "function" then
---     debug[ik] = "function"
---   elseif type(iv) == "table" then
---     debug[ik] = "table"
---   elseif type(iv) == "userdata" then
---     debug[ik] = "userdata"
---   elseif type(iv) == "thread" then
---     debug[ik] = "thread"
---   else
---     debug[ik] = iv
---   end
--- end
--- print(Inspect(debug))

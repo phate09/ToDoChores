@@ -1,7 +1,12 @@
+--- To Do Chores Poop Plugin
+-- @module choresPluginPoop
+
 local ChoresPlugin = Class(function(self)
   self.isTaskDoing = false
+  self:InitWorld()
+end)
 
-  -- options
+function ChoresPlugin:InitWorld()
   self.opt = {
     poop = false,
     spoiled_food = true,
@@ -23,7 +28,7 @@ local ChoresPlugin = Class(function(self)
   self.recipes = {
     fertilizer = "fertilizer",
   }
-end)
+end
 
 function ChoresPlugin:GetAction()
   -- find something can pickup

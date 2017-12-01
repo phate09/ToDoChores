@@ -1,0 +1,14 @@
+image: registry.gitlab.com/taichunmin/docker-ldoc:latest
+
+stages:
+  - deploy
+
+pages:
+  stage: deploy
+  script:
+    - ldoc -c ldoc.ld .
+  tags:
+    - docker
+  artifacts:
+    paths:
+      - public

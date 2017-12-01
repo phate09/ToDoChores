@@ -1,3 +1,7 @@
+--- To Do Chores (a Don't Starve Together mod)
+-- @classmod chores
+-- @alias Chores
+
 -- load dependencies
 local Widget = require("widgets/widget")
 local ImageButton = require("widgets/imagebutton")
@@ -8,17 +12,17 @@ Chores = Class(Widget, function (self)
   -- parents constructor
   Widget._ctor(self, "Chores")
 
+  --- all plugins opts array
   self.opts = {}
+  --- sleep how many times of `self:OnUpdatePC()`
   self.skipUpdatePC = 0
-  self.updatingLv = 0 -- level of StartUpdating, maintained by IncUpdatingLv()
-  self.doingTask = nil -- maintained by OnStartTask(), OnStopTask()
-  self.optsFile = modname .. "_opts"
-  self.skipChoresOnControl = {
-    CONTROL_ACTION,
-    CONTROL_ATTACK,
-    CONTROL_PRIMARY,
-    CONTROL_SECONDARY,
-  }
+  --- level of StartUpdating, maintained by `IncUpdatingLv()`
+  self.updatingLv = 0
+  --- current doing task, maintained by `OnStartTask()`, `OnStopTask()`
+  self.doingTask = nil
+  --- The opts save path, vary by `IS_CAVE`
+  self.optsFile = modname .. (IS_CAVE and "_cave_opts" or "_opts")
+  --- Define Actions Default Control
   self.actionsToCtrl = {
     [ACTIONS.CHECKTRAP] = CONTROL_PRIMARY,
     [ACTIONS.DEPLOY] = CONTROL_CONTROLLER_ACTION,
@@ -26,7 +30,7 @@ Chores = Class(Widget, function (self)
     [ACTIONS.DRY] = CONTROL_PRIMARY,
     [ACTIONS.FERTILIZE] = CONTROL_PRIMARY,
   }
-  -- hint devloper that action is not suitable for some control rpc
+  --- hint devloper that action is not suitable for some control rpc
   self.controlToStr = {
     CONTROL_PRIMARY = "CONTROL_PRIMARY",
     CONTROL_SECONDARY = "CONTROL_SECONDARY",
@@ -46,6 +50,8 @@ Chores = Class(Widget, function (self)
   DebugLog('Chores Inited')
 end)
 
+--- A function to import a plugin, copy from `mods.lua:L294`
+-- @local
 local function PluginImport(pluginName)
   pluginName = "scripts/plugins/"..pluginName
   DebugLog("PluginImport: "..env.MODROOT..pluginName)
@@ -63,23 +69,30 @@ local function PluginImport(pluginName)
   end
 end
 
+--- Start to load all plugins
 function Chores:InitPlugin ()
   self.plugins = {}
 
   local pluginNames = {"axe", "pickaxe", "backpack", "shovel", "book_gardening", "poop", "trap", "smallmeat_dried"}
 
   for _, pluginName in pairs(pluginNames) do
-    DebugLog('loading ChoresPlugin:'..pluginName)
+    DebugLog('loading ChoresPlugin: '..pluginName)
     choresplugin = nil
     PluginImport(pluginName)
-    if choresplugin then
-      self.plugins[pluginName] = choresplugin
-      self.opts[pluginName] = choresplugin:GetOpt()
-      DebugLog('loading ChoresPlugin:'..pluginName..' success!')
+    if choresplugin and choresplugin.GetOpt then
+      local pluginOpts = choresplugin:GetOpt()
+      if type(pluginOpts) == "table" and next(pluginOpts) ~= nil then
+        self.plugins[pluginName] = choresplugin
+        self.opts[pluginName] = pluginOpts
+        DebugLog('loading ChoresPlugin: '..pluginName..' success!')
+      else
+        DebugLog('disabled ChoresPlugin: '..pluginName..' because no opts!')
+      end
     end
   end
 end
 
+--- Render btns by opts of plugin
 function Chores:Render()
   self:SetHAnchor(ANCHOR_LEFT)
   self:SetVAnchor(ANCHOR_BOTTOM)
@@ -113,7 +126,7 @@ function Chores:Render()
   self.root:SetSize(25 + 45 * colcnt, 50 * rowcnt)
 end
 
--- creates a button
+--- Creates a single button
 function Chores:MakeBtn(task, icon, isTaskBtn)
   local me = self
   local btn = me.root:AddChild(ImageButton("images/inventoryimages.xml", icon .. ".tex"))
@@ -153,6 +166,7 @@ function Chores:MakeBtn(task, icon, isTaskBtn)
   return btn
 end
 
+--- On opts btn click function
 function Chores:OnOptClick(task, icon)
   local plugin = self.plugins[task]
   if not plugin then return end
@@ -162,6 +176,7 @@ function Chores:OnOptClick(task, icon)
   end
 end
 
+--- Set opts btn status
 function Chores:SetBtnStatus(task, icon, status)
   if status == nil then status = (not self.opts[task][icon]) end
 
@@ -174,15 +189,14 @@ function Chores:SetBtnStatus(task, icon, status)
   end
 end
 
--- save opts on hide
+--- Save opts on hide, copy from `modindex.lua:168`
 function Chores:SaveOpts()
-  -- copy from modindex.lua:168
   local fastmode = true
   local data = DataDumper(self.opts, nil, fastmode)
   local insz, outsz = TheSim:SetPersistentString(self.optsFile, data, ENCODE_SAVES, function() DebugLog("Chores:SaveOpts() saved " .. self.optsFile) end)
 end
 
--- save opts on game start
+--- Save opts on game start
 function Chores:LoadOpts()
   TheSim:GetPersistentString(self.optsFile, function (load_success, str)
     if load_success == true then
@@ -202,7 +216,7 @@ function Chores:LoadOpts()
   end)
 end
 
--- batch apply opts when load success
+--- Batch apply opts when load success
 function Chores:ApplyOpts(newOpts)
   for task, iv in pairs(newOpts) do
     if self.plugins[task] then
@@ -213,7 +227,7 @@ function Chores:ApplyOpts(newOpts)
   end
 end
 
--- toggle visibility of the widget
+--- Toggle visibility of the widget
 function Chores:Toggle()
   if self:IsVisible() then
     self:Hide()
@@ -224,6 +238,7 @@ function Chores:Toggle()
   end
 end
 
+--- Control the `self:StartUpdating()` and `self:StopUpdating()`
 function Chores:IncUpdatingLv(inc)
   if inc then
     local newUpdatingLv = self.updatingLv + inc
@@ -238,6 +253,7 @@ function Chores:IncUpdatingLv(inc)
   return self.updatingLv
 end
 
+--- On start task
 function Chores:OnStartTask(task)
   DebugLog('start task: '..task)
 
@@ -250,6 +266,7 @@ function Chores:OnStartTask(task)
   self:IncUpdatingLv(1)
 end
 
+--- On stop task
 function Chores:OnStopTask()
   if self.doingTask == nil then return end
 
@@ -260,6 +277,7 @@ function Chores:OnStopTask()
   self.doingTask = nil
 end
 
+--- On force stop
 function Chores:OnForceStop()
   for _, plugin in pairs(self.plugins) do
     if plugin.OnForceStop then plugin:OnForceStop() end
@@ -270,6 +288,7 @@ function Chores:OnForceStop()
   end
 end
 
+--- On update, this function will call all `plugin:OnUpdate()` and `self:OnUpdatePC()`
 function Chores:OnUpdate(dt)
   for _, plugin in pairs(self.plugins) do
     if plugin.OnUpdate then plugin:OnUpdate() end
@@ -277,6 +296,7 @@ function Chores:OnUpdate(dt)
   self:OnUpdatePC(dt)
 end
 
+--- Check if player can do chores action or not
 function Chores:OnUpdatePC(dt)
   -- no task
   if self.doingTask == nil then return end
@@ -288,7 +308,7 @@ function Chores:OnUpdatePC(dt)
   if (not pc.ismastersim and (pc.remote_controls[CONTROL_ACTION] or 0) > 0) or not pc:IsEnabled() then return end
 
   -- copy from playercontroller.lua:369
-  if not pc:IsEnabled() or IsPaused() or pc:IsBusy() then return end
+  if not pc:IsEnabled() or IsPaused() or pc:IsBusy() or not pc:CanLocomote() then return end
 
   -- hands are full!
   if ThePlayer.replica.inventory:IsHeavyLifting() and not (ThePlayer.replica.rider ~= nil and ThePlayer.replica.rider:IsRiding()) then return end
@@ -310,17 +330,21 @@ function Chores:OnUpdatePC(dt)
 
   -- get plugin action
   local plugin = self.plugins[self.doingTask]
-  local buffaction = plugin:GetAction()
-  DebugLog(tostring(buffaction))
-
-  -- if no action then stop the task
-  if not buffaction then self:OnStopTask() end
-  self:DoAction(buffaction)
+  self:DoAction(plugin:GetAction())
 end
 
+--- get the action, do extra RPC call, then call `pc:DoAction()`
 function Chores:DoAction(buffaction)
   local pc = ThePlayer.components.playercontroller
-  if not buffaction then return end
+
+  -- if no action then stop the task
+  if not buffaction then return self:OnStopTask() end
+  DebugLog(tostring(buffaction))
+
+  -- if buffaction has skipUpdatePC, then save the max skipUpdatePC
+  if buffaction.skipUpdatePC then
+    self.skipUpdatePC = math.max(self.skipUpdatePC, buffaction.skipUpdatePC)
+  end
 
   -- when an action has failed stops the loop
   buffaction:AddFailAction(function()
@@ -329,7 +353,6 @@ function Chores:DoAction(buffaction)
       msg = msg .. "\nIf this action never success, maybe this action not suitable for " .. self.controlToStr[buffaction.control] .. " RPC."
     end
     DebugLog(msg)
-    -- self:OnStopTask()
   end)
 
   if buffaction.control == nil then
@@ -365,14 +388,15 @@ function Chores:DoAction(buffaction)
   pc:DoAction(buffaction)
 end
 
+--- PRC call for PRIMARY
 function Chores:RPC_PRIMARY(act)
   local pc = ThePlayer.components.playercontroller
   -- copy from playercontroller.lua:2596
   if pc.ismastersim then
     ThePlayer.components.combat:SetTarget(nil)
   else
-    local position = act.pos or act.target:GetPosition()
-    local mouseover = (act.action ~= ACTIONS.DROP and position) and FindEntityByPos(position, 0.1) or nil
+    local mouseover = act.action ~= ACTIONS.DROP and act.target or nil
+    local position = act.pos or mouseover:GetPosition()
     local controlmods = pc:EncodeControlMods()
     if pc.locomotor == nil then
       pc.remote_controls[CONTROL_PRIMARY] = 0
@@ -388,6 +412,7 @@ function Chores:RPC_PRIMARY(act)
   return act
 end
 
+--- PRC call for SECONDARY
 function Chores:RPC_SECONDARY(act)
   local pc = ThePlayer.components.playercontroller
   -- copy from playercontroller.lua:2684
@@ -409,6 +434,7 @@ function Chores:RPC_SECONDARY(act)
   return act
 end
 
+--- PRC call for ACTION
 function Chores:RPC_ACTION(act)
   local pc = ThePlayer.components.playercontroller
   -- copy from playercontroller.lua:1328
@@ -428,6 +454,7 @@ function Chores:RPC_ACTION(act)
   return act
 end
 
+--- PRC call for CONTROLLER_ALTACTION
 function Chores:RPC_CONTROLLER_ALTACTION(act)
   local pc = ThePlayer.components.playercontroller
   -- copy from playercontroller.lua:630
@@ -458,6 +485,7 @@ function Chores:RPC_CONTROLLER_ALTACTION(act)
   return act
 end
 
+--- PRC call for CONTROLLER_ACTION
 function Chores:RPC_CONTROLLER_ACTION(act)
   local pc = ThePlayer.components.playercontroller
   -- copy from playercontroller.lua:523
@@ -472,7 +500,6 @@ function Chores:RPC_CONTROLLER_ACTION(act)
       act.preview_cb = function()
         pc.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
         local isreleased = not TheInput:IsControlPressed(CONTROL_CONTROLLER_ACTION)
-        DebugLog(RPC.ControllerActionButtonDeploy, obj, act.pos.x, act.pos.z, act.rotation ~= 0 and act.rotation or nil, isreleased)
         SendRPCToServer(RPC.ControllerActionButtonDeploy, obj, act.pos.x, act.pos.z, act.rotation ~= 0 and act.rotation or nil, isreleased)
       end
     end
@@ -489,6 +516,7 @@ function Chores:RPC_CONTROLLER_ACTION(act)
   return act
 end
 
+--- Because we want CHOP and MINE to do continuous, we need to deceive the CONTROL_ACTION key is pressed.
 function Chores:InjectInput()
   local IsControlPressed_base = TheInput.IsControlPressed
 
@@ -498,6 +526,7 @@ function Chores:InjectInput()
   end
 end
 
+--- Because we deceive the CONTROL_ACTION key is pressed, we need to prevent default ActionButtonAction from execute.
 function Chores:InjectGetActionButtonAction()
   local pc = ThePlayer.components.playercontroller
   local GetActionButtonAction_base = pc.GetActionButtonAction

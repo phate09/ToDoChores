@@ -1,19 +1,29 @@
+--- To Do Chores Axe Plugin
+-- @module choresPluginAxe
+-- @alias ChoresPlugin
+
 local ChoresPlugin = Class(function(self)
   self.isTaskDoing = false
+  self:InitWorld()
+end)
 
-  -- options
+function ChoresPlugin:InitWorld()
   self.opt = {
     acorn = true,
     charcoal = false,
+    green_cap = false,
     pinecone = false,
     twiggy_nut = true,
   }
 
   self.pickups = {
     acorn = "acorn",
+    blue_cap = "green_cap",
     charcoal = "charcoal",
+    green_cap = "green_cap",
     log = true,
     pinecone = "pinecone",
+    red_cap = "green_cap",
     twiggy_nut = "twiggy_nut",
     twigs = true,
   }
@@ -24,7 +34,7 @@ local ChoresPlugin = Class(function(self)
     "sway2_loop_tall",
     "chop_tall",
   }
-end)
+end
 
 function ChoresPlugin:GetAction()
   -- find something can pickup
@@ -37,7 +47,7 @@ function ChoresPlugin:GetAction()
 
   -- now we have target, let's ensure tool
   local tool = nil
-  tool, act = EnsureEquipToolOrAction(function(item) return item and item:HasTag('CHOP_tool') end)
+  tool, act = EnsureHandToolOrAction(function(item) return item and item:HasTag('CHOP_tool') end)
   if act then return act end
 
   -- while tool not found, try to make one or return nil to stop task
@@ -53,7 +63,7 @@ function ChoresPlugin:CanBePickup(item)
 end
 
 function ChoresPlugin:CanBeChop(item) -- tags: CHOP_workable
-  if item == nil and not item:HasTag("tree") then return false end
+  if item == nil or not item:HasTag("tree") then return false end
   if item:HasTag("burnt") then return self.opt["charcoal"] end
 
   -- adult tree

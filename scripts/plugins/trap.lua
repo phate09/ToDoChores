@@ -1,3 +1,6 @@
+--- To Do Chores Trap Plugin
+-- @module choresPluginTrap
+
 local triggeredTrapAnims = {
   "side",
   "trap_loop",
@@ -6,8 +9,10 @@ local triggeredTrapAnims = {
 local ChoresPlugin = Class(function(self)
   self.isTaskDoing = false
   self.trapOldPos = nil
+  self:InitWorld()
+end)
 
-  -- options
+function ChoresPlugin:InitWorld()
   self.opt = {
     rabbit = true,
     smallmeat = true,
@@ -26,8 +31,7 @@ local ChoresPlugin = Class(function(self)
     monstermeat = "monstermeat",
     spoiled_food = "spoiled_food",
   }
-
-end)
+end
 
 local function isTrap(item)
   return item and item.prefab == "trap"
@@ -52,8 +56,8 @@ function ChoresPlugin:GetAction()
   -- let's try to drop trap if old trap position exists
   if self.trapOldPos then
     act = self:forceDropTrap(self.trapOldPos)
-    self.trapOldPos = nil
     if act then return act end
+    self.trapOldPos = nil -- need to set to nil after no act
   end
 
   -- find something can pickup
