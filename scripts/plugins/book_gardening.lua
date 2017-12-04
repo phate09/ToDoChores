@@ -15,6 +15,7 @@ function ChoresPlugin:InitWorld()
   self.opt = {
     acorn = false,
     dug_berrybush = false,
+    dug_berrybush2 = false,
     dug_berrybush_juicy = false,
     dug_grass = false,
     dug_sapling = false,
@@ -26,7 +27,7 @@ function ChoresPlugin:InitWorld()
   self.deploies = {
     acorn = "acorn",
     dug_berrybush = "dug_berrybush",
-    dug_berrybush2 = "dug_berrybush",
+    dug_berrybush2 = "dug_berrybush2",
     dug_berrybush_juicy = "dug_berrybush_juicy",
     dug_grass = "dug_grass",
     dug_sapling = "dug_sapling",
