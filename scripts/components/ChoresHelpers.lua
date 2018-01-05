@@ -4,10 +4,10 @@
 -- global require
 require = GLOBAL.require
 Inspect = require("components/inspect")
+ModConfigurationScreen = require "screens/modconfigurationscreen"
 
 -- global alias
 ACTIONS = GLOBAL.ACTIONS
-AllRecipes = GLOBAL.AllRecipes
 ANCHOR_BOTTOM = GLOBAL.ANCHOR_BOTTOM
 ANCHOR_LEFT = GLOBAL.ANCHOR_LEFT
 ANCHOR_MIDDLE = GLOBAL.ANCHOR_MIDDLE
@@ -32,6 +32,7 @@ ENCODE_SAVES = GLOBAL.ENCODE_SAVES
 EQUIPSLOTS = GLOBAL.EQUIPSLOTS
 error = GLOBAL.error
 FindEntity = GLOBAL.FindEntity
+GetValidRecipe = GLOBAL.GetValidRecipe
 IsPaused = GLOBAL.IsPaused
 KEY_ALT = GLOBAL.KEY_ALT
 kleiloadlua = GLOBAL.kleiloadlua
@@ -42,7 +43,9 @@ NEWFONT = GLOBAL.NEWFONT
 next = GLOBAL.next
 PI = GLOBAL.PI
 RADIANS = GLOBAL.RADIANS
+rawget = GLOBAL.rawget
 RPC = GLOBAL.RPC
+RunInEnvironment = GLOBAL.RunInEnvironment
 RunInSandboxSafe = GLOBAL.RunInSandboxSafe
 SavePersistentString = GLOBAL.SavePersistentString
 SCALEMODE_FILLSCREEN = GLOBAL.SCALEMODE_FILLSCREEN
@@ -54,6 +57,7 @@ STRINGS = GLOBAL.STRINGS
 TheCamera = GLOBAL.TheCamera
 TheFrontEnd = GLOBAL.TheFrontEnd
 TheInput = GLOBAL.TheInput
+TheNet = GLOBAL.TheNet
 ThePlayer = GLOBAL.ThePlayer
 TheSim = GLOBAL.TheSim
 TheWorld = GLOBAL.TheWorld
@@ -66,6 +70,7 @@ SEE_DIST_LOOT = 5
 SEE_DIST_WORK_TARGET = 25
 DEBUG = false
 IS_CAVE = TheWorld ~= nil and TheWorld:HasTag("cave")
+IS_PLAYING_NOW = TheNet:GetIsClient() or TheNet:GetIsServer()
 
 --- Transform togglekey from char to key code
 -- @helper
@@ -110,7 +115,8 @@ function UpdateSettings()
       env.CONFIG[v.name] = v.default
     end
   end
-  env.CONFIG.togglekey = CharToKeyCode(env.CONFIG.togglekey) or CharToKeyCode('V')
+  env.CONFIG.toggle_chores = CharToKeyCode(env.CONFIG.toggle_chores) or CharToKeyCode('V')
+  env.CONFIG.open_settings = CharToKeyCode(env.CONFIG.open_settings) or CharToKeyCode('O')
 end
 
 --- Get player's active item.
@@ -340,9 +346,15 @@ end
 -- @param recipeName
 -- @return (boolean) can make recipe or not
 function CanMakeRecipt(recipeName)
-  local recipe = AllRecipes[recipeName]
+  local recipe = GetValidRecipe(recipeName)
   local builder = ThePlayer.replica.builder
   return recipe and builder:KnowsRecipe(recipe.name) and builder:CanBuild(recipe.name) and recipe
+end
+
+function BuilderIsFreeBuildMode()
+  local builder = ThePlayer.components.builder or nil
+  local classified = ThePlayer.replica and ThePlayer.replica.builder and ThePlayer.replica.builder.classified or nil
+  if builder then return builder.freebuildmode else return classified.isfreebuildmode:value() end
 end
 
 --- Make Recipt
@@ -351,7 +363,50 @@ end
 -- @return (bufferedaction) action need to do, or (nil)
 function GetMakeReciptAction(recipeName)
   local recipe = CanMakeRecipt(recipeName)
-  return recipe and BufferedAction(ThePlayer, nil, ACTIONS.BUILD, nil, nil, recipe.name, 1)
+  return recipe and BufferedAction(ThePlayer, nil, ACTIONS.BUILD, nil, nil, recipe.name, 1) or nil
+end
+
+--- Check if player knows recipe and resource enough (deep version)
+-- @helper
+-- @param recipeName
+-- @param amount
+-- @return (boolean) can make recipe or not
+function CanDeepMakeRecipt(recipeName, amount)
+  local recipe = GetValidRecipe(recipeName)
+  local builderReplica = ThePlayer.replica.builder
+  local inventoryReplica = ThePlayer.replica.inventory
+  if not (recipe and builderReplica:KnowsRecipe(recipe.name)) then return end
+  if ThePlayer.components.builder == nil and builderReplica.classified == nil then return end
+  if not BuilderIsFreeBuildMode() then
+    for i, v in ipairs(recipe.ingredients) do
+      local requiredCnt = amount * math.max(1, RoundBiasedUp(v.amount * builderReplica:IngredientMod()))
+      hasEnoughIngredients, ownedCnt = inventoryReplica:Has(v.type, requiredCnt)
+      if not (hasEnoughIngredients and CanDeepMakeRecipt(v.type, requiredCnt - ownedCnt)) then return false end
+    end
+  end
+  for i, v in ipairs(recipe.character_ingredients) do
+    if not builderReplica:HasCharacterIngredient(v) then return end
+  end
+  for i, v in ipairs(recipe.tech_ingredients) do
+    if not builderReplica:HasTechIngredient(v) then return end
+  end
+  return recipe
+end
+
+--- Make Recipt (deep version)
+-- @helper
+-- @param recipeName
+-- @return (bufferedaction) action need to do, or (nil)
+function GetDeepMakeReciptAction(recipeName)
+  local recipe = CanDeepMakeRecipt(recipeName)
+  if not recipe then return end
+  if not BuilderIsFreeBuildMode() then
+    for i, v in ipairs(recipe.ingredients) do
+      local requiredCnt = math.max(1, RoundBiasedUp(v.amount * builderReplica:IngredientMod()))
+      if not inventoryReplica:Has(v.type, requiredCnt) then return GetDeepMakeReciptAction(v.type) end
+    end
+  end
+  return BufferedAction(ThePlayer, nil, ACTIONS.BUILD, nil, nil, recipe.name, 1)
 end
 
 --- RPC: Additional RPC for make recipt
@@ -470,6 +525,44 @@ function Fcmp(fa, fb)
   local delta = 0.000001
   local diff = fa - fb
   if diff < -delta then return -1 else return diff > delta and 1 or 0 end
+end
+
+function TranslateModInfo ()
+  -- Because GLOBAL has "strict.lua"
+  -- Need to use rawget to prevent game crash!
+  if not rawget(GLOBAL, "ChinesePlus") then return end
+  modinfofiles = {
+    'modinfo.lua',
+    'modinfo_chs.lua',
+    'modinfo_cht.lua'
+  }
+  local modinfofile = env.MODROOT..modinfofiles[GLOBAL.ChinesePlus.lang + 1]
+  local modinfoenv = {}
+  print("Chores TranslateModInfo: " .. modinfofile)
+
+  local modinfofn = kleiloadlua(modinfofile)
+  if type(modinfofn) == "string" then
+    print("Error TranslateModInfo: "..modinfofile.."!\n "..fn.."\n")
+    return
+  elseif modinfofn then
+    local status, r = RunInEnvironment(modinfofn, modinfoenv)
+    -- override
+    local baseLoadModConfigurationOptions = KnownModIndex.LoadModConfigurationOptions
+    KnownModIndex.LoadModConfigurationOptions = function (self, _modname, _client_config)
+      local config_options = baseLoadModConfigurationOptions(self, _modname, _client_config)
+      if _modname == modname then
+        for i,v in pairs(modinfoenv.configuration_options) do
+          for j,k in pairs(config_options) do
+            if v.name == k.name then
+              k.label = v.label
+              k.hover = v.hover
+            end
+          end
+        end
+      end
+      return config_options
+    end
+  end
 end
 
 function fprint(filename, data)

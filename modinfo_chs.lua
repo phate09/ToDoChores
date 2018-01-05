@@ -3,9 +3,9 @@
 
 name = "家务小助手"
 author = "phate09, taichunmin"
-version = "2.0.3"
+version = "2.0.4"
 forumthread = "https://github.com/phate09/ToDoChores"
-description = "版本: "..version.."\n\n自动采集、砍树、挖掘、种树、施肥、放陷阱、晒肉干！\n\n[预设使用方法]\n* 预设使用 V 来开启工作面板\n* 预设使用 Alt + V 来开启游戏内设定\n\n如果模组有任何 bug 请回报到："..forumthread
+description = "版本: "..version.."\n\n自动采集、砍树、挖掘、种树、施肥、放陷阱、晒肉干！\n\n[预设使用方法]\n* 预设使用 V 来开启工作面板\n* 预设使用 O 来开启游戏内设定\n\n如果模组有任何 bug 请回报到："..forumthread
 
 api_version = 10
 
@@ -37,11 +37,18 @@ end
 configuration_options =
 {
   {
-    name = "togglekey",
+    name = "toggle_chores",
     label = "开关工作面板",
-    hover = "想要使用什么按键来开关家务小助手的工作面板？(同时按下 Alt 可开启游戏内设定选单)",
+    hover = "想要使用什么按键来开关家务小助手的工作面板？",
     options = keyslist,
     default = "V",
+  },
+  {
+    name = "open_settings",
+    label = "游戏内打开设定",
+    hover = "想要在游戏内使用什么按键来开关家务小助手的设定面板",
+    options = keyslist,
+    default = "O",
   },
   {
     name = "use_gold_tools",
@@ -76,5 +83,20 @@ configuration_options =
     hover = "在 Y 轴方向自动种植的数量？",
     options = numeric_list,
     default = 4
+  },
+  {
+    name = "planting_margin",
+    label = "额外种植间距",
+    hover = "在种植种子或树苗时需要多少额外的间距呢？",
+    options = {
+      {description = "0.1", data = 0.1},
+      {description = "0.25", data = 0.25},
+      {description = "0.5", data = 0.5},
+      {description = "0.75", data = 0.75},
+      {description = "1", data = 1},
+      {description = "1.5", data = 1.5},
+      {description = "2", data = 2},
+    },
+    default = 0.25
   }
 }
