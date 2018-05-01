@@ -308,13 +308,16 @@ function Chores:OnUpdatePC(dt)
   if (not pc.ismastersim and (pc.remote_controls[CONTROL_ACTION] or 0) > 0) or not pc:IsEnabled() then return end
 
   -- copy from playercontroller.lua:369
-  if not pc:IsEnabled() or IsPaused() or pc:IsBusy() or not pc:CanLocomote() then return end
+  if IsPaused() or pc:IsBusy() or not pc:CanLocomote() then return end
 
   -- hands are full!
   if ThePlayer.replica.inventory:IsHeavyLifting() and not (ThePlayer.replica.rider ~= nil and ThePlayer.replica.rider:IsRiding()) then return end
 
   -- copy from playercontroller.lua:369
   if pc:IsDoingOrWorking() then return end
+
+  -- builder is busy, for RpcMakeRecipeFromMenu()
+  if ThePlayer.replica.builder:IsBusy() then return end
 
   -- copy from playercontroller.lua:1771
   local isidle = ThePlayer:HasTag("idle")

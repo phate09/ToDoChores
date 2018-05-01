@@ -3,9 +3,9 @@
 
 name = "To Do Chores"
 author = "phate09, taichunmin"
-version = "2.0.3"
+version = "2.0.4"
 forumthread = "https://github.com/phate09/ToDoChores"
-description = "version: "..version.."\n\nAutomate gathering, chopping, digging, planting, fertilizing, traping and drying!\n\n[Usage]\n* Press key V to toggle chores wheel (default)\n* Press Alt + V to open in-game settings (default)\n\nPlease report bug at: "..forumthread
+description = "version: "..version.."\n\nAutomate gathering, chopping, digging, planting, fertilizing, traping and drying!\n\n[Usage]\n* Press key V to toggle chores wheel (default)\n* Press O to open in-game settings (default)\n\nPlease report bug at: "..forumthread
 
 api_version = 10
 priority = -10000
@@ -38,11 +38,18 @@ end
 configuration_options =
 {
   {
-    name = "togglekey",
-    label = "Open Chores Wheel",
-    hover = "Which button should open the working menu? (Also Press Alt to open in-game settings)",
+    name = "toggle_chores",
+    label = "Toggle Chores Wheel",
+    hover = "Which button should toggle the working menu?",
     options = keyslist,
     default = "V",
+  },
+  {
+    name = "open_settings",
+    label = "Open In Game Settings",
+    hover = "Which button should open the chores settings in game?",
+    options = keyslist,
+    default = "O",
   },
   {
     name = "use_gold_tools",
@@ -77,5 +84,20 @@ configuration_options =
     hover = "How big is the planting square on Y axis?",
     options = numeric_list,
     default = 4
+  },
+  {
+    name = "planting_margin",
+    label = "Extra plantable margin",
+    hover = "How many extra margin of planting plantable?",
+    options = {
+      {description = "0.1", data = 0.1},
+      {description = "0.25", data = 0.25},
+      {description = "0.5", data = 0.5},
+      {description = "0.75", data = 0.75},
+      {description = "1", data = 1},
+      {description = "1.5", data = 1.5},
+      {description = "2", data = 2},
+    },
+    default = 0.25
   }
 }

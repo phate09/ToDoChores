@@ -1,8 +1,6 @@
 --- To Do Chores Book Gardening Plugin
 -- @module choresPluginBookGardening
 
-local DEPLOYSPACING_EXTRA = 0.1
-
 local ChoresPlugin = Class(function(self)
   self.isTaskDoing = false
   self.placers = nil
@@ -94,7 +92,7 @@ function ChoresPlugin:ShowPlacer()
   if placerItem == nil or placerItem.replica.inventoryitem == nil then return end
   local seedInvitem = placerItem.replica.inventoryitem
   local placerName = seedInvitem:GetDeployPlacerName()
-  self.gap = seedInvitem:DeploySpacingRadius() + DEPLOYSPACING_EXTRA
+  self.gap = seedInvitem:DeploySpacingRadius() + env.CONFIG.planting_margin
 
   local planting_x = CONFIG.planting_x
   local planting_y = CONFIG.planting_y
