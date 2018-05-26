@@ -4,7 +4,7 @@
 -- global require
 require = GLOBAL.require
 Inspect = require("components/inspect")
-ModConfigurationScreen = require "screens/modconfigurationscreen"
+ModConfigurationScreen = require "screens/redux/modconfigurationscreen"
 
 -- global alias
 ACTIONS = GLOBAL.ACTIONS

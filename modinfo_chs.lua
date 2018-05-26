@@ -3,9 +3,9 @@
 
 name = "家务小助手"
 author = "phate09, taichunmin"
-version = "2.0.4"
-forumthread = "https://github.com/phate09/ToDoChores"
-description = "版本: "..version.."\n\n自动采集、砍树、挖掘、种树、施肥、放陷阱、晒肉干！\n\n[预设使用方法]\n* 预设使用 V 来开启工作面板\n* 预设使用 O 来开启游戏内设定\n\n如果模组有任何 bug 请回报到："..forumthread
+version = "2.0.5"
+forumthread = "/topic/91092-mods-to-do-chores/"
+description = "版本: "..version.."\n\n自动采集、砍树、挖掘、种树、施肥、放陷阱、晒肉干！\n\n[预设使用方法]\n* 预设使用 V 来开启工作面板\n* 预设使用 O 来开启游戏内设定\n\n如果模组有任何 bug 请回报到：https://github.com/phate09/ToDoChores"
 
 api_version = 10
 

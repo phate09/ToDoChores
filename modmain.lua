@@ -45,7 +45,7 @@ if IS_PLAYING_NOW then
             UpdateSettings()
             basePopScreen(...)
           end
-          TheFrontEnd:PushScreen(ModConfigurationScreen(modname, false))
+          TheFrontEnd:PushScreen(ModConfigurationScreen(modname, true))
         elseif key == CONFIG.toggle_chores then
           chores:Toggle()
         end

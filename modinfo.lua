@@ -3,9 +3,10 @@
 
 name = "To Do Chores"
 author = "phate09, taichunmin"
-version = "2.0.4"
+version = "2.0.5"
 forumthread = "https://github.com/phate09/ToDoChores"
-description = "version: "..version.."\n\nAutomate gathering, chopping, digging, planting, fertilizing, traping and drying!\n\n[Usage]\n* Press key V to toggle chores wheel (default)\n* Press O to open in-game settings (default)\n\nPlease report bug at: "..forumthread
+forumthread = "/topic/91092-mods-to-do-chores/"
+description = "version: "..version.."\n\nAutomate gathering, chopping, digging, planting, fertilizing, traping and drying!\n\n[Usage]\n* Press key V to toggle chores wheel (default)\n* Press O to open in-game settings (default)\n\nPlease report bug at: https://github.com/phate09/ToDoChores"
 
 api_version = 10
 priority = -10000
@@ -40,21 +41,21 @@ configuration_options =
   {
     name = "toggle_chores",
     label = "Toggle Chores Wheel",
-    hover = "Which button should toggle the working menu?",
+    hover = "Which button do you want to toggle the working menu?",
     options = keyslist,
     default = "V",
   },
   {
     name = "open_settings",
     label = "Open In Game Settings",
-    hover = "Which button should open the chores settings in game?",
+    hover = "Which button do you want to open the settings of this mod in game?",
     options = keyslist,
     default = "O",
   },
   {
     name = "use_gold_tools",
     label = "Craft gold tools",
-    hover = "When crafting new tools prefer tools made of gold",
+    hover = "Do you want to make gold tools when crafting?",
     options={
       {description="No", data=false},
       {description="Yes", data=true}
@@ -64,7 +65,7 @@ configuration_options =
   {
     name = "cut_adult_tree_only",
     label = "Only cut adult trees",
-    hover = "Only cut adult trees to maximise cones yeld",
+    hover = "Do you want to only cut adult trees?",
     options={
       {description="No", data=false},
       {description="Yes", data=true}
@@ -87,7 +88,7 @@ configuration_options =
   },
   {
     name = "planting_margin",
-    label = "Extra plantable margin",
+    label = "Plantable extra margin",
     hover = "How many extra margin of planting plantable?",
     options = {
       {description = "0.1", data = 0.1},
