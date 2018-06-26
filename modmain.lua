@@ -1,6 +1,14 @@
 --- To Do Chores (a Don't Starve Together mod)
 -- @module modmain
 
+-- for debug purpose
+-- GLOBAL.CHEATS_ENABLED = true
+-- GLOBAL.CHEATS_KEEP_SAVE = true
+-- GLOBAL.CHEATS_ENABLE_DPRINT = true
+-- GLOBAL.DPRINT_USERNAME = ""
+-- GLOBAL.require('debugkeys')
+-- dprint = GLOBAL.dprint
+
 -- global variable
 chores = nil
 IS_PLAYING_NOW = GLOBAL.TheNet:GetIsClient() or GLOBAL.TheNet:GetIsServer()
@@ -32,6 +40,7 @@ if IS_PLAYING_NOW then
       modimport("scripts/widgets/chores")
       TranslateModInfo()
       chores = addChoresControls:AddChild(Chores())
+      GLOBAL.ThePlayer.chores = env
 
       -- key handler
       local keyHandler = TheInput:AddKeyHandler(function(key, down)
@@ -50,6 +59,8 @@ if IS_PLAYING_NOW then
           chores:Toggle()
         end
       end)
+      
+      GaScreenView("Mod Loaded")
     end
   end
 end

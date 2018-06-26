@@ -31,26 +31,26 @@ function ChoresPlugin:InitWorld()
 end
 
 function ChoresPlugin:GetAction()
-  -- find something can pickup
+  local target
+
+  -- 撿地板上可以曬的東西
   local act = GetClosestPickupAction(function(...) return self:isDryable(...) end)
   if act then return act end
 
-  -- find some item dryable
-  local invitem = EnsureActiveItem(function(...) return self:isDryable(...) end)
+  -- 尋找空的曬肉架
+  target = FindEntity(ThePlayer, SEE_DIST_WORK_TARGET, nil, {"candry"}, {"fire", "smolder", "event_trigger", "INLIMBO", "NOCLICK"})
 
-  local target = FindEntity(ThePlayer, SEE_DIST_WORK_TARGET, function(item)
-    if item == nil then return false end
-    return item:HasTag("dried") or (invitem)
-  end, nil, {"fire", "smolder", "event_trigger", "INLIMBO", "NOCLICK"}, {"candry", "dried"})
-
+  -- 如果找到東西可以曬
   if target then
-    if invitem and target:HasTag("candry") then
-      return GetLeftClickAction(target:GetPosition(), target)
-    else
-      return BufferedAction(self.inst, target, ACTIONS.HARVEST)
-    end
+    -- 找物品欄內可以曬的東西
+    local invitem = EnsureActiveItem(function(...) return self:isDryable(...) end)
+    if invitem then return GetLeftClickAction(target:GetPosition(), target) end
   end
-  ReturnActiveItem()
+
+  -- 找可以收成的曬肉架
+  ReturnActiveItem() -- 把東西放回物品欄
+  target = FindEntity(ThePlayer, SEE_DIST_WORK_TARGET, nil, {"dried"}, {"fire", "smolder", "event_trigger", "INLIMBO", "NOCLICK"})
+  if target then return GetLeftClickAction(target:GetPosition(), target) end
 end
 
 function ChoresPlugin:isDryable(item)
