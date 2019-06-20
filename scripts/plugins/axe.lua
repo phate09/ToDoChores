@@ -87,7 +87,8 @@ function ChoresPlugin:CanBeChop(item) -- tags: CHOP_workable
 
   -- adult tree
   if CONFIG.cut_adult_tree_only then
-    for ik, iv in ipairs(self.adultTreeAnims) do
+    if TheWorld.state.iswinter and item.prefab == "deciduoustree" then return false end
+    for ik, iv in pairs(self.adultTreeAnims) do
       if item.AnimState:IsCurrentAnimation(iv) then return true end
     end
     return false

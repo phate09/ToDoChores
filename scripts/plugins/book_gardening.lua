@@ -5,6 +5,7 @@ local ChoresPlugin = Class(function(self)
   self.isTaskDoing = false
   self.placers = nil
   self.taskPlacers = nil
+  self.seedPrefab = nil
   self.gap = 0
   self:InitWorld()
 end)
@@ -12,81 +13,93 @@ end)
 function ChoresPlugin:InitWorld()
   self.opt = {
     acorn = false,
+    beemine = false,
     dug_berrybush = false,
-    dug_berrybush2 = false,
     dug_berrybush_juicy = false,
+    dug_berrybush2 = false,
     dug_grass = false,
     dug_sapling = false,
     marblebean = false,
     pinecone = false,
+    trap_teeth = false,
     twiggy_nut = true,
   }
 
+  -- 可以被 deploy 的 prefab => 參考的選項開關
   self.deploies = {
     acorn = "acorn",
+    beemine = "beemine",
     dug_berrybush = "dug_berrybush",
-    dug_berrybush2 = "dug_berrybush2",
     dug_berrybush_juicy = "dug_berrybush_juicy",
+    dug_berrybush2 = "dug_berrybush2",
     dug_grass = "dug_grass",
     dug_sapling = "dug_sapling",
     marblebean = "marblebean",
     pinecone = "pinecone",
+    trap_teeth = "trap_teeth",
     twiggy_nut = "twiggy_nut",
   }
 
+  -- 如果找不到種子時，能夠被製作的東西 => 參考的選項開關
   self.recipes = {
+    beemine = "beemine",
     marblebean = "marblebean",
+    trap_teeth = "trap_teeth",
   }
+
+  -- 一開始 opt 選中的東西
+  self.seedPrefab = 'twiggy_nut'
 end
 
 function ChoresPlugin:GetAction()
-  -- find something can pickup
+  -- 先嘗試撿起任何可以撿的東西
   local act = GetClosestPickupAction(function (...) return self:CanDeploy(...) end)
   if act then return act end
 
-  -- find target to deploy
+  -- 尋找種植目標，如果找不到就停止工作
   if self.taskPlacers == nil then return end
   local target = nil
   for _, placer in pairs(self.taskPlacers) do
     placer.components.placer:OnUpdate()
     if placer.components.placer.can_build then target = placer end
   end
-  if target == nil then return end -- can not find target
+  if target == nil then return end -- 找不到任何可種植的目標
 
-  -- now we have target, let's find seed
-  local item = FindOnePlayerItem(function (...) return self:CanDeploy(...) end)
-  if item == nil then
-    for recipeName, icon in pairs(self.recipes) do
-      if self.opt[icon] then
-        act = GetMakeReciptAction(recipeName)
-        if act then return act end
-      end
-    end
-    -- no seed, so stop the task
-    return
+  -- 如果種子不足 2 個，就嘗試製作
+  local recipeName = self.recipes[self.seedPrefab]
+  if recipeName and self.opt[self.seedPrefab] and not HasInvItem(self.seedPrefab, 2) then
+    act = GetDeepMakeReciptAction(recipeName)
+    if act then return act end
   end
+
+  -- 找到目標以後，就開始找種子
+  local item = FindOnePlayerItem(function (...) return self:CanDeploy(...) end)
+  if item == nil then return end -- 找不到種子，所以停止工作
 
   return BufferedAction(ThePlayer, nil, ACTIONS.DEPLOY, item, target:GetPosition(), nil, nil, nil, target:GetRotation())
 end
 
+--- 判斷 item 是不是目前使用者所選擇要種植的東西
+-- @param item 一個場上的道具或是物品欄內的道具
 function ChoresPlugin:CanDeploy(item)
   if item == nil then return false end
   local ret = self.deploies[item.prefab] or false
   if type(ret) == "string" then return self.opt[ret] else return result end
 end
 
+--- 取得目前的選項
 function ChoresPlugin:GetOpt()
   return self.opt
 end
 
+--- 當工作開始按鈕發生 hover 事件的時候，就顯示可種植的位置
 function ChoresPlugin:OnTaskGainFocus()
   self:ShowPlacer()
 end
 
 function ChoresPlugin:ShowPlacer()
-  DebugLog("ShowPlacer")
   if self.placers ~= nil then return end
-  self.placers = {}
+  DebugLog("ShowPlacer")
 
   local placerItem = FindOnePlayerItem(function (...) return self:CanDeploy(...) end)
   if placerItem == nil or placerItem.replica.inventoryitem == nil then return end
@@ -97,6 +110,7 @@ function ChoresPlugin:ShowPlacer()
   local planting_x = CONFIG.planting_x
   local planting_y = CONFIG.planting_y
   local offset_center_x = (planting_x - 1) * self.gap / 2
+  self.placers = {}
 
   for xOff = 0, planting_x - 1, 1 do
     for zOff = 0, planting_y - 1, 1 do
@@ -120,13 +134,13 @@ local function PlacerOnUpdate(self, dt)
   local color = self.can_build and Vector3(.25,.75,.25) or Vector3(.75,.25,.25)
   if self.mouse_blocked then
       self.inst:Hide()
-      for i, v in ipairs(self.linked) do
+      for i, v in pairs(self.linked) do
           v:Hide()
       end
   else
       self.inst.AnimState:SetAddColour(color.x, color.y, color.z, 0)
       self.inst:Show()
-      for i, v in ipairs(self.linked) do
+      for i, v in pairs(self.linked) do
           v.AnimState:SetAddColour(color.x, color.y, color.z, 0)
           v:Show()
       end
@@ -140,7 +154,7 @@ function ChoresPlugin:PlacerTestFn(pt, rot)
   -- if we can make seed, can_build = true and hide all placer
   if placerItem == nil then
     for recipeName, icon in pairs(self.recipes) do
-      if self.opt[icon] and CanMakeRecipt(recipeName) then return true, true end
+      if self.opt[icon] and CanDeepMakeRecipt(recipeName) then return true, true end
     end
   end
   -- if something at point or camera heading not a multiple of 45 then hide
@@ -154,7 +168,7 @@ local function PlacerReposition (self, snapPlayerToMeters)
   if self.fixedcameraoffset ~= nil then
     local rot = self.fixedcameraoffset - TheCamera:GetHeading()
     self.inst.Transform:SetRotation(rot)
-    for i, v in ipairs(self.linked) do
+    for i, v in pairs(self.linked) do
       v.Transform:SetRotation(rot)
     end
   end
@@ -202,11 +216,13 @@ function ChoresPlugin:HidePlacer()
 end
 
 function ChoresPlugin:OnOptClick(icon)
-   -- radio btn
+  -- 這個功能的選項是單選的
   local changed = {icon}
   for ik, iv in pairs(self.opt) do
     if iv then table.insert(changed, ik) end
   end
+  -- 紀錄目前選了什麼
+  self.seedPrefab = icon
   return changed
 end
 

@@ -12,25 +12,23 @@ Chores = Class(Widget, function (self)
   -- parents constructor
   Widget._ctor(self, "Chores")
 
-  --- all plugins opts array
+  --- 所有插件的選項
   self.opts = {}
-  --- sleep how many times of `self:OnUpdatePC()`
+  --- 需要額外跳過幾次 `self:OnUpdatePC()`
   self.skipUpdatePC = 0
-  --- level of StartUpdating, maintained by `IncUpdatingLv()`
+  --- StartUpdating 的深度, 由 `IncUpdatingLv()` 維護
   self.updatingLv = 0
-  --- current doing task, maintained by `OnStartTask()`, `OnStopTask()`
+  --- 目前正在進行中的工作, 由 `OnStartTask()`, `OnStopTask()` 維護
   self.doingTask = nil
-  --- The opts save path, vary by `IS_CAVE`
+  --- 是否需要等候工作開始，這個選項只有在沒有開啟預測模式才有效
+  self.isWaitWorkStart = false
+  --- 選項的除存路徑, 會因為是否有地穴而修改 `IS_CAVE`
   self.optsFile = modname .. (IS_CAVE and "_cave_opts" or "_opts")
-  --- Define Actions Default Control
+  --- 指定動作的預設 RPC 模擬方式
   self.actionsToCtrl = {
-    [ACTIONS.CHECKTRAP] = CONTROL_PRIMARY,
     [ACTIONS.DEPLOY] = CONTROL_CONTROLLER_ACTION,
-    [ACTIONS.DROP] = CONTROL_PRIMARY,
-    [ACTIONS.DRY] = CONTROL_PRIMARY,
-    [ACTIONS.FERTILIZE] = CONTROL_PRIMARY,
   }
-  --- hint devloper that action is not suitable for some control rpc
+  --- 提示開發者是否有動作發生錯誤的時候顯示用
   self.controlToStr = {
     CONTROL_PRIMARY = "CONTROL_PRIMARY",
     CONTROL_SECONDARY = "CONTROL_SECONDARY",
@@ -230,10 +228,12 @@ end
 --- Toggle visibility of the widget
 function Chores:Toggle()
   if self:IsVisible() then
+    GaScreenView("Hide Widget", "end")
     self:Hide()
     self:OnForceStop()
     self:SaveOpts()
   else
+    GaScreenView("Show Widget", "start")
     self:Show()
   end
 end
@@ -255,7 +255,8 @@ end
 
 --- On start task
 function Chores:OnStartTask(task)
-  DebugLog('start task: '..task)
+  Say('Task "'..task..'" started.')
+  GaScreenView("Start Task: "..task)
 
   -- stop previous task
   self:OnStopTask()
@@ -270,11 +271,14 @@ end
 function Chores:OnStopTask()
   if self.doingTask == nil then return end
 
-  DebugLog('stop task: '..self.doingTask)
+  Say('Task "'..self.doingTask..'" stoped.')
+  GaScreenView("Stop Task: "..self.doingTask)
 
   self:IncUpdatingLv(-1)
   self.plugins[self.doingTask]:OnStopTask()
   self.doingTask = nil
+  self.isWaitWorkStart = false
+  self.skipUpdatePC = 0
 end
 
 --- On force stop
@@ -303,28 +307,27 @@ function Chores:OnUpdatePC(dt)
 
   local pc = ThePlayer.components.playercontroller
 
-  -- Don't want to spam the action button before the server actually starts the buffered action
-  -- Also check if playercontroller is enabled
-  if (not pc.ismastersim and (pc.remote_controls[CONTROL_ACTION] or 0) > 0) or not pc:IsEnabled() then return end
+  -- copy from PlayerController:OnControl
+  if not pc:IsEnabled() or IsPaused() then return end
 
-  -- copy from playercontroller.lua:369
-  if IsPaused() or pc:IsBusy() or not pc:CanLocomote() then return end
+  -- DebugLogOnChange("locomotor = "..tostring(pc.locomotor ~= nil)..", IsDoingOrWorking = "..tostring(pc:IsDoingOrWorking())..", HasTag(idle) = "..tostring(ThePlayer:HasTag("idle"))..", HasTag(moving) = "..tostring(ThePlayer:HasTag("moving"))..", HasStateTag(idle) = "..tostring(ThePlayer.sg and ThePlayer.sg:HasStateTag("idle"))..", HasStateTag(moving) = "..tostring(ThePlayer.sg and ThePlayer.sg:HasStateTag("moving")))
 
-  -- hands are full!
+  -- 等候上一個工作完成
+  if pc.locomotor ~= nil then
+    -- 有開啟預測模式下，需要確認主機的工作結束
+    if ThePlayer.sg and (not ThePlayer.sg:HasStateTag("idle") or ThePlayer.sg:HasStateTag("moving")) then return end
+  else
+    -- 沒有開啟預測模式，需要先等工作開始
+    if self.isWaitWorkStart and (not pc:IsDoingOrWorking() or ThePlayer:HasTag("idle") or ThePlayer:HasTag("moving")) then return end
+  end
+  self.isWaitWorkStart = false
+  if pc:IsDoingOrWorking() or not ThePlayer:HasTag("idle") or ThePlayer:HasTag("moving") then return end
+
+  -- 正在拿著很重的東西或是正在騎動物
   if ThePlayer.replica.inventory:IsHeavyLifting() and not (ThePlayer.replica.rider ~= nil and ThePlayer.replica.rider:IsRiding()) then return end
 
-  -- copy from playercontroller.lua:369
-  if pc:IsDoingOrWorking() then return end
-
-  -- builder is busy, for RpcMakeRecipeFromMenu()
+  -- 還沒辦法蓋東西 RpcMakeRecipeFromMenu() 會需要
   if ThePlayer.replica.builder:IsBusy() then return end
-
-  -- copy from playercontroller.lua:1771
-  local isidle = ThePlayer:HasTag("idle")
-  if ThePlayer.sg ~= nil then
-    isidle = ThePlayer.sg:HasStateTag("idle") or (isidle and ThePlayer:HasTag("nopredict"))
-  end
-  if not isidle then return end
 
   if self.skipUpdatePC > 0 then
     self.skipUpdatePC = math.max(0, self.skipUpdatePC - 1)
@@ -349,15 +352,6 @@ function Chores:DoAction(buffaction)
     self.skipUpdatePC = math.max(self.skipUpdatePC, buffaction.skipUpdatePC)
   end
 
-  -- when an action has failed stops the loop
-  buffaction:AddFailAction(function()
-    local msg = "buffaction failed: "..tostring(buffaction)
-    if buffaction.control and self.controlToStr[buffaction.control] then
-      msg = msg .. "\nIf this action never success, maybe this action not suitable for " .. self.controlToStr[buffaction.control] .. " RPC."
-    end
-    DebugLog(msg)
-  end)
-
   if buffaction.control == nil then
     -- some special RPC actions
     if buffaction.action == ACTIONS.BUILD then -- build recipe
@@ -368,12 +362,12 @@ function Chores:DoAction(buffaction)
       return -- equip don't need to do action, so return directly
     elseif self.actionsToCtrl[buffaction.action] then -- ACTIONS to Ctrl
       buffaction.control = self.actionsToCtrl[buffaction.action]
-    else -- default to CONTROL_ACTION
-      buffaction.control = CONTROL_ACTION
+    else -- default to CONTROL_PRIMARY
+      buffaction.control = CONTROL_PRIMARY
     end
   end
 
-  if buffaction and buffaction.control then
+  if buffaction.control then
     local ctrl = buffaction.control
     if ctrl == CONTROL_PRIMARY then
       buffaction = self:RPC_PRIMARY(buffaction)
@@ -389,6 +383,7 @@ function Chores:DoAction(buffaction)
   end
 
   pc:DoAction(buffaction)
+  self.isWaitWorkStart = true
 end
 
 --- PRC call for PRIMARY
