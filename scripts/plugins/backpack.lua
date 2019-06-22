@@ -77,7 +77,9 @@ function ChoresPlugin:InitWorld()
       flint = true,
       green_cap = true,
       guano = true,
+      kelp = true,
       petals = false,
+      rock_avocado_fruit_rockhard = false,
       seeds = true,
       twigs = true,
     }
@@ -86,6 +88,7 @@ function ChoresPlugin:InitWorld()
       berries = "berries",
       berries_juicy = "berries",
       blue_cap = "green_cap",
+      bullkelp_beachedroot = "kelp",
       carrot = "carrot",
       carrot_seeds = "seeds",
       corn_seeds = "seeds",
@@ -104,6 +107,7 @@ function ChoresPlugin:InitWorld()
       poop = "guano",
       pumpkin_seeds = "seeds",
       red_cap = "green_cap",
+      rock_avocado_fruit = "rock_avocado_fruit_rockhard",
       rottenegg = "guano",
       seeds = "seeds",
       spoiled_food = "guano",
@@ -116,6 +120,7 @@ function ChoresPlugin:InitWorld()
       berrybush_juicy = "berries",
       berrybush2 = "berries",
       blue_mushroom = "green_cap",
+      bullkelp_plant = "kelp",
       carrot_planted = "carrot",
       flower = "petals",
       flower_rose = "petals",
@@ -124,7 +129,9 @@ function ChoresPlugin:InitWorld()
       planted_flower = "petals",
       red_mushroom = "green_cap",
       reeds = "cutreeds",
+      rock_avocado_bush = "rock_avocado_fruit_rockhard",
       sapling = "twigs",
+      sapling_moon = "twigs",
     }
   end
 end
@@ -143,10 +150,12 @@ end
 
 function ChoresPlugin:CanPickOrPickup(item)
   if item == nil or (self.isHoldingDigTool and item:HasTag('DIG_workable')) then return false end
-  local result = nil
-  if item:HasTag("pickable") then result = self.picks[item.prefab] else result = self.pickups[item.prefab] end
-  -- ensure result to be false when nil
-  if type(result) == "string" then return self.opt[result] else return result or false end
+
+  if item:HasTag("pickable") then
+    return CanBeAction(self.picks, self.opt, item)
+  else
+    return CanBeAction(self.pickups, self.opt, item)
+  end
 end
 
 function ChoresPlugin:GetOpt()

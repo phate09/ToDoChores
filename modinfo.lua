@@ -3,7 +3,7 @@
 
 name = "To Do Chores"
 author = "phate09, taichunmin"
-version = "2.1.1"
+version = "2.2.0"
 description = "version: "..version.."\n\nAutomate gathering, chopping, digging, planting, fertilizing, traping and drying!\n\n[Usage]\n* Press key V to toggle chores wheel (default)\n* Press O to open in-game settings (default)\n\nPlease report bug at: https://github.com/phate09/ToDoChores"
 
 api_version = 10
@@ -98,5 +98,15 @@ configuration_options =
       {description = "2", data = 2},
     },
     default = 0.25
+  },
+  {
+    name = "hint_start_stop",
+    label = "Start and stop hint",
+    hover = "Do you want mod to hint task start and stop?",
+    options={
+      {description="No", data=false},
+      {description="Yes", data=true}
+    },
+    default=true,
   }
 }

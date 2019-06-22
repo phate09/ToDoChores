@@ -11,29 +11,49 @@ function ChoresPlugin:InitWorld()
   self.opt = {
     acorn = true,
     charcoal = false,
+    driftwood_log = true,
     green_cap = false,
+    moon_tree_blossom = false,
     pinecone = false,
-    twiggy_nut = true,
     shovel = false,
+    twiggy_nut = true,
   }
 
   self.pickups = {
     acorn = "acorn",
     blue_cap = "green_cap",
     charcoal = "charcoal",
+    driftwood_log = "driftwood_log",
     green_cap = "green_cap",
     log = true,
+    moon_tree_blossom = "moon_tree_blossom",
     pinecone = "pinecone",
     red_cap = "green_cap",
     twiggy_nut = "twiggy_nut",
     twigs = true,
   }
 
+  self.chops = {
+    deciduoustree = "acorn",
+    driftwood_small1 = "driftwood_log",
+    driftwood_small2 = "driftwood_log",
+    driftwood_tall = "driftwood_log",
+    evergreen = "pinecone",
+    evergreen_sparse = "pinecone",
+    marsh_tree = "twiggy_nut",
+    moon_tree = "moon_tree_blossom",
+    mushtree_medium = "green_cap",
+    mushtree_small = "green_cap",
+    mushtree_tall = "green_cap",
+    twiggytree = "twiggy_nut",
+  }
+
   self.adultTreeAnims = {
+    "chop_tall",
     "idle_tall",
+    "idle",
     "sway1_loop_tall",
     "sway2_loop_tall",
-    "chop_tall",
   }
 end
 
@@ -76,9 +96,7 @@ function ChoresPlugin:GetAction()
 end
 
 function ChoresPlugin:CanBePickup(item)
-  if item == nil then return false end
-  local result = self.pickups[item.prefab] or false
-  if type(result) == "string" then return self.opt[result] else return result end
+  return CanBeAction(self.pickups, self.opt, item)
 end
 
 function ChoresPlugin:CanBeChop(item) -- tags: CHOP_workable
@@ -89,12 +107,12 @@ function ChoresPlugin:CanBeChop(item) -- tags: CHOP_workable
   if CONFIG.cut_adult_tree_only then
     if TheWorld.state.iswinter and item.prefab == "deciduoustree" then return false end
     for ik, iv in pairs(self.adultTreeAnims) do
-      if item.AnimState:IsCurrentAnimation(iv) then return true end
+      if item.AnimState:IsCurrentAnimation(iv) then return CanBeAction(self.chops, self.opt, item) end
     end
     return false
   end
 
-  return true
+  return CanBeAction(self.chops, self.opt, item)
 end
 
 function ChoresPlugin:GetOpt()

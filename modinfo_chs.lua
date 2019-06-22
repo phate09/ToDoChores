@@ -3,7 +3,7 @@
 
 name = "家务小助手"
 author = "phate09, taichunmin"
-version = "2.1.1"
+version = "2.2.0"
 description = "版本: "..version.."\n\n自动采集、砍树、挖掘、种树、施肥、放陷阱、晒肉干！\n\n[预设使用方法]\n* 预设使用 V 来开启工作面板\n* 预设使用 O 来开启游戏内设定\n\n如果模组有任何 bug 请回报到：https://github.com/phate09/ToDoChores"
 
 api_version = 10
@@ -97,5 +97,15 @@ configuration_options =
       {description = "2", data = 2},
     },
     default = 0.25
+  },
+  {
+    name = "hint_start_stop",
+    label = "开始结束提示",
+    hover = "您希望模组提示您任务的开始和结束吗？",
+    options={
+      {description="否", data=false},
+      {description="是", data=true}
+    },
+    default=true,
   }
 }

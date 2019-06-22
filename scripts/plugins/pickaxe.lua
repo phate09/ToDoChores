@@ -12,9 +12,11 @@ function ChoresPlugin:InitWorld()
     goldnugget = true,
     ice = false,
     marble = false,
+    moonglass = false,
     moonrocknugget = false,
     nitre = false,
     redgem = true,
+    rock_avocado_fruit_rockhard = false,
     rocks = false,
   }
 
@@ -23,15 +25,24 @@ function ChoresPlugin:InitWorld()
     flint = true,
     fossil_piece = "fossil_piece",
     goldnugget = "goldnugget",
+    greengem = "redgem",
     ice = "ice",
     marble = "marble",
     marblebean = "marble",
+    moonglass = "moonglass",
     moonrocknugget = "moonrocknugget",
     nitre = "nitre",
+    opalpreciousgem = "redgem",
+    orangegem = "redgem",
+    purplegem = "redgem",
     redgem = "redgem",
+    rock_avocado_fruit_ripe = "rock_avocado_fruit_rockhard",
+    rock_avocado_fruit_sprout = "rock_avocado_fruit_rockhard",
     rocks = true,
+    yellowgem = "redgem",
   }
 
+  -- see rocks.lua
   self.mines = {
     cavein_boulder = "rocks",
     gargoyle_houndatk = "moonrocknugget",
@@ -39,15 +50,25 @@ function ChoresPlugin:InitWorld()
     gargoyle_werepigatk = "moonrocknugget",
     gargoyle_werepigdeath = "moonrocknugget",
     gargoyle_werepighowl = "moonrocknugget",
+    hotspring = "moonglass",
     marblepillar = "marble",
     marbleshrub = "marble",
     marbletree = "marble",
-    rock1 = "nitre",
-    rock2 = "goldnugget",
+    moonglass_rock = "moonglass",
+    rock_avocado_fruit = "rock_avocado_fruit_rockhard",
     rock_flintless = "rocks",
+    rock_flintless_low = "rocks",
+    rock_flintless_med = "rocks",
     rock_ice = "ice",
     rock_moon = "moonrocknugget",
+    rock_moon_shell = "moonrocknugget",
     rock_petrified_tree = "nitre",
+    rock_petrified_tree_med = "nitre",
+    rock_petrified_tree_old = "nitre",
+    rock_petrified_tree_short = "nitre",
+    rock_petrified_tree_tall = "nitre",
+    rock1 = "nitre",
+    rock2 = "goldnugget",
     sculpture_bishopbody = "marble",
     sculpture_knightbody = "marble",
     sculpture_rookbody = "marble",
@@ -101,9 +122,7 @@ function ChoresPlugin:GetAction()
 end
 
 function ChoresPlugin:CanPickup(item)
-  if item == nil then return false end
-  local result = self.pickups[item.prefab] or false
-  if type(result) == "string" then return self.opt[result] else return result end
+  return CanBeAction(self.pickups, self.opt, item)
 end
 
 function ChoresPlugin:CanMine(item) -- tags: Mine_workable
@@ -114,8 +133,7 @@ function ChoresPlugin:CanMine(item) -- tags: Mine_workable
     if item.AnimState:IsCurrentAnimation(iv) then return false end
   end
 
-  local result = self.mines[item.prefab] or false
-  if type(result) == "string" then return self.opt[result] else return result end
+  return CanBeAction(self.mines, self.opt, item)
 end
 
 function ChoresPlugin:GetOpt()

@@ -32,7 +32,7 @@ ENCODE_SAVES = GLOBAL.ENCODE_SAVES
 EQUIPSLOTS = GLOBAL.EQUIPSLOTS
 error = GLOBAL.error
 FindEntity = GLOBAL.FindEntity
-GetCurrentLocale = GLOBAL.GetCurrentLocale
+GetInventoryItemAtlas = GLOBAL.GetInventoryItemAtlas
 GetValidRecipe = GLOBAL.GetValidRecipe
 IsPaused = GLOBAL.IsPaused
 KEY_ALT = GLOBAL.KEY_ALT
@@ -73,7 +73,6 @@ SEE_DIST_WORK_TARGET = 25
 DEBUG = false
 IS_CAVE = TheWorld ~= nil and TheWorld:HasTag("cave")
 IS_PLAYING_NOW = TheNet:GetIsClient() or TheNet:GetIsServer()
-I18N_CODE = nil
 
 --- Transform togglekey from char to key code
 -- @helper
@@ -120,6 +119,10 @@ function UpdateSettings()
   end
   env.CONFIG.toggle_chores = CharToKeyCode(env.CONFIG.toggle_chores) or CharToKeyCode('V')
   env.CONFIG.open_settings = CharToKeyCode(env.CONFIG.open_settings) or CharToKeyCode('O')
+  -- 傳送設定值給 GaEvent
+  for i, v in pairs(env.CONFIG) do
+    GaEvent('Update Settings', i, v)
+  end
 end
 
 --- Get player's active item.
@@ -577,39 +580,52 @@ function Say(str)
   ThePlayer.components.talker:Say(tostring(str))
 end
 
---- Save current language code to `I18N_CODE`
+--- 取得目前的 ISO 3166 國家代碼
 -- @helper
-function InitI18nCode()
-  local languagemap = {
-    chs = "chs", 
-    cht = "cht", 
-    zh_CN = "chs", 
-    cn = "chs", 
-    TW = "cht",
-    zh = "chs",
-    schinese = "chs", 
-    tchinese = "cht",
-  }
-  local lang = nil
-  -- Because GLOBAL has "strict.lua"
-  -- Need to use rawget to prevent game crash!
-  if rawget(GLOBAL, "LanguageTranslator") then
-    lang = GLOBAL.LanguageTranslator.defaultlang
-  else
-    lang = TheNet:GetLanguageCode()
+local isoLanguageCode = nil
+function GetIsoLanguageCode()
+  -- 從 MultiplayerMainScreen:FinishedFadeIn() 複製
+  if isoLanguageCode == nil then
+    local LANGUAGE_CODE_TO_ISO3166 = {
+      brazilian = "br", -- 巴西
+      bulgarian = "bg", -- 保加利亞
+      czech = "cz", -- 捷克
+      danish = "dk", -- 丹麥
+      dutch = "nl", -- 荷蘭
+      english = "en", -- english
+      finnish = "fi", -- 芬蘭
+      french = "fr", -- 法國
+      german = "de", -- 德國
+      greek = "gr", -- 希臘
+      hungarian = "hu", -- 匈牙利
+      italian = "it", -- 義大利
+      japanese = "jp", -- 日本
+      korean = "kr", -- 韓國
+      norwegian = "no", -- 挪威
+      polish = "pl", -- 波蘭
+      portuguese = "pt", -- 葡萄牙
+      romanian = "ro", -- 羅馬尼亞
+      russian = "ru", -- 俄羅斯
+      schinese = "cn", -- 中國
+      spanish = "es", -- 西班牙
+      swedish = "se", -- 瑞典
+      tchinese = "tw", -- 台灣
+      thai = "th", -- 泰國
+      turkish = "tr", -- 土耳其
+      ukrainian = "ua", -- 烏克蘭
+    }
+    isoLanguageCode = LANGUAGE_CODE_TO_ISO3166[ TheNet:GetLanguageCode() ] or "en"
   end
-  if lang and languagemap[lang] then I18N_CODE = languagemap[lang] end
+  return isoLanguageCode
 end
-InitI18nCode()
 
-function TranslateModInfo ()
-  if I18N_CODE == nil then return end
-  modinfofiles = {
-    'modinfo.lua',
-    'modinfo_chs.lua',
-    'modinfo_cht.lua'
+function TranslateModInfo()
+  local MOD_TRANSLATES = {
+    cn = "_chs",
+    tw = "_cht",
   }
-  local modinfofile = env.MODROOT..'modinfo_'..I18N_CODE..'.lua'
+  local translate = MOD_TRANSLATES[GetIsoLanguageCode()] or ""
+  local modinfofile = env.MODROOT.."modinfo"..translate..".lua"
   local modinfoenv = {}
   print("Chores TranslateModInfo: " .. modinfofile)
 
@@ -617,11 +633,15 @@ function TranslateModInfo ()
   if type(modinfofn) == "string" then
     print("Error TranslateModInfo: "..modinfofile.."!\n "..fn.."\n")
     return
-  elseif modinfofn then
+  elseif not modinfofn then
+    print("Error TranslateModInfo: No "..modinfofile)
+    return
+  else
     local status, r = RunInEnvironment(modinfofn, modinfoenv)
     -- override
     local baseLoadModConfigurationOptions = KnownModIndex.LoadModConfigurationOptions
     KnownModIndex.LoadModConfigurationOptions = function (self, _modname, _client_config)
+      print("LoadModConfigurationOptions modname = "..modname)
       local config_options = baseLoadModConfigurationOptions(self, _modname, _client_config)
       if _modname == modname then
         for i,v in pairs(modinfoenv.configuration_options) do
@@ -629,6 +649,7 @@ function TranslateModInfo ()
             if v.name == k.name then
               k.label = v.label
               k.hover = v.hover
+              k.options = v.options
             end
           end
         end
@@ -683,18 +704,42 @@ end
 function GaScreenView(screen_name, session_control)
   local userid = TheNet:GetUserID()
   local version = KnownModIndex:GetModInfo(modname).version
-  local locale = GetCurrentLocale()
-  local url = "https://www.google-analytics.com/collect?v=1&tid=UA-142147160-1&t=screenview&an=ToDoChores&av="..version.."&cid="..userid.."&cd="..encodeURI(screen_name)
+  local url = "https://www.google-analytics.com/collect?v=1&tid=UA-142147160-1&t=screenview&an=ToDoChores&av="..version.."&cid="..userid.."&ul="..GetIsoLanguageCode().."&cd="..encodeURI(screen_name)
   if session_control == "start" or session_control == "end" then
     url = url .. "&sc=" .. session_control
-  end
-  if locale ~= nil and locale.code ~= nil then
-    url = url .. "&ul=" .. locale.code
   end
   -- DebugLog(url)
   TheSim:QueryServer(url, function(result, isSuccessful, resultCode) end, "GET")
 end
 
-UpdateSettings() -- init setting
+function GaEvent(category, action, label, value)
+  category = category ~= nil and tostring(category) or nil
+  action = action ~= nil and tostring(action) or nil
+  label = label ~= nil and tostring(label) or nil
+  value = value ~= nil and tostring(value) or nil
+  if category == nil or action == nil then return end -- category 和 action 都必須有值
+
+  local userid = TheNet:GetUserID()
+  local version = KnownModIndex:GetModInfo(modname).version
+  local url = "https://www.google-analytics.com/collect?v=1&tid=UA-142147160-1&t=event&an=ToDoChores&av="..version.."&cid="..userid.."&ul="..GetIsoLanguageCode().."&ec="..encodeURI(category).."&ea="..encodeURI(action)
+  if label then
+    url = url .. "&el=" .. label
+  end
+  if value then
+    url = url .. "&ev=" .. value
+  end
+  -- DebugLog(url)
+  TheSim:QueryServer(url, function(result, isSuccessful, resultCode) end, "GET")
+end
+
+function CanBeAction(actionCfg, opt, item)
+  if item == nil then return false end
+  local result = actionCfg[item.prefab] or false
+  if type(result) == "string" then return opt[result] else return result end
+end
+
+GaScreenView("Mod Loaded")
+TranslateModInfo() -- Translate In-game Mod Info
+UpdateSettings() -- load setting
 
 if not IsWorkshopMod() then DEBUG = true end -- if not workshop mod then turn on DebugLog()

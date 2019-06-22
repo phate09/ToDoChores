@@ -8,10 +8,12 @@ end)
 
 function ChoresPlugin:InitWorld()
   self.opt = {
-    dug_grass = true,
     dug_berrybush = true,
     dug_berrybush_juicy = true,
+    dug_grass = true,
+    dug_rock_avocado_bush = false,
     dug_sapling = true,
+    dug_sapling_moon = true,
     log = false,
   }
 
@@ -20,20 +22,25 @@ function ChoresPlugin:InitWorld()
     berries_juicy = "dug_berrybush",
     cutgrass = "dug_grass",
     dug_berrybush = "dug_berrybush",
-    dug_berrybush2 = "dug_berrybush",
     dug_berrybush_juicy = "dug_berrybush_juicy",
+    dug_berrybush2 = "dug_berrybush",
     dug_grass = "dug_grass",
+    dug_rock_avocado_bush = "dug_rock_avocado_bush",
     dug_sapling = "dug_sapling",
+    dug_sapling_moon = "dug_sapling_moon",
     log = "log",
-    twigs = "dug_sapling",
+    rock_avocado_fruit = "dug_rock_avocado_bush",
+    twigs = true,
   }
 
   self.digs = {
-    grass = "dug_grass",
     berrybush = "dug_berrybush",
-    berrybush2 = "dug_berrybush",
     berrybush_juicy = "dug_berrybush_juicy",
+    berrybush2 = "dug_berrybush",
+    grass = "dug_grass",
+    rock_avocado_bush = "dug_rock_avocado_bush",
     sapling = "dug_sapling",
+    sapling_moon = "dug_sapling_moon",
   }
 end
 
@@ -58,17 +65,14 @@ function ChoresPlugin:GetAction(item)
 end
 
 function ChoresPlugin:CanPickup(item)
-  if item == nil then return false end
-  local result = self.pickups[item.prefab] or false
-  if type(result) == "string" then return self.opt[result] else return result end
+  return CanBeAction(self.pickups, self.opt, item)
 end
 
 function ChoresPlugin:CanDig(item) -- tag: DIG_workable
   if item == nil then return false end
-  -- dig stump
+  -- 挖樹根
   if item:HasTag("stump") then return self.opt["log"] end
-  local result = self.digs[item.prefab] or false
-  if type(result) == "string" then return self.opt[result] else return result end
+  return CanBeAction(self.digs, self.opt, item)
 end
 
 local function isDigTool(item)

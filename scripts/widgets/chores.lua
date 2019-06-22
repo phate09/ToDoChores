@@ -127,7 +127,8 @@ end
 --- Creates a single button
 function Chores:MakeBtn(task, icon, isTaskBtn)
   local me = self
-  local btn = me.root:AddChild(ImageButton("images/inventoryimages.xml", icon .. ".tex"))
+  local image = icon .. ".tex"
+  local btn = me.root:AddChild(ImageButton(GetInventoryItemAtlas(image), image))
   local plugin = me.plugins[task]
 
   me.root.btns[task][icon] = btn
@@ -228,10 +229,10 @@ end
 --- Toggle visibility of the widget
 function Chores:Toggle()
   if self:IsVisible() then
-    GaScreenView("Hide Widget", "end")
     self:Hide()
     self:OnForceStop()
     self:SaveOpts()
+    GaScreenView("Hide Widget", "end")
   else
     GaScreenView("Show Widget", "start")
     self:Show()
@@ -255,13 +256,12 @@ end
 
 --- On start task
 function Chores:OnStartTask(task)
-  Say('Task "'..task..'" started.')
-  GaScreenView("Start Task: "..task)
-
   -- stop previous task
   self:OnStopTask()
 
   -- start new task
+  if CONFIG.hint_start_stop then Say('Task "'..task..'" started.') end
+  GaScreenView("Start Task: "..task)
   self.doingTask = task
   self.plugins[task]:OnStartTask()
   self:IncUpdatingLv(1)
@@ -271,7 +271,7 @@ end
 function Chores:OnStopTask()
   if self.doingTask == nil then return end
 
-  Say('Task "'..self.doingTask..'" stoped.')
+  if CONFIG.hint_start_stop then Say('Task "'..self.doingTask..'" stoped.') end
   GaScreenView("Stop Task: "..self.doingTask)
 
   self:IncUpdatingLv(-1)
@@ -389,21 +389,23 @@ end
 --- PRC call for PRIMARY
 function Chores:RPC_PRIMARY(act)
   local pc = ThePlayer.components.playercontroller
-  -- copy from playercontroller.lua:2596
+  -- copy from playercontroller.lua:OnLeftClick
   if pc.ismastersim then
     ThePlayer.components.combat:SetTarget(nil)
   else
     local mouseover = act.action ~= ACTIONS.DROP and act.target or nil
-    local position = act.pos or mouseover:GetPosition()
+    local position = act:GetActionPoint() or (mouseover and mouseover:GetPosition())
+    local platform, pos_x, pos_z = pc:GetPlatformRelativePosition(position.x, position.z)
+
     local controlmods = pc:EncodeControlMods()
     if pc.locomotor == nil then
       pc.remote_controls[CONTROL_PRIMARY] = 0
-      SendRPCToServer(RPC.LeftClick, act.action.code, position.x, position.z, mouseover, nil, controlmods, act.action.canforce, act.action.mod_name)
+      SendRPCToServer(RPC.LeftClick, act.action.code, pos_x, pos_z, mouseover, nil, controlmods, act.action.canforce, act.action.mod_name, platform, platform ~= nil)
     elseif act.action ~= ACTIONS.WALKTO and pc:CanLocomote() then
       act.preview_cb = function()
         pc.remote_controls[CONTROL_PRIMARY] = 0
         local isreleased = not TheInput:IsControlPressed(CONTROL_PRIMARY)
-        SendRPCToServer(RPC.LeftClick, act.action.code, position.x, position.z, mouseover, isreleased, controlmods, nil, act.action.mod_name)
+        SendRPCToServer(RPC.LeftClick, act.action.code, pos_x, pos_z, mouseover, isreleased, controlmods, nil, act.action.mod_name, platform, platform ~= nil)
       end
     end
   end
@@ -413,19 +415,20 @@ end
 --- PRC call for SECONDARY
 function Chores:RPC_SECONDARY(act)
   local pc = ThePlayer.components.playercontroller
-  -- copy from playercontroller.lua:2684
+  -- copy from playercontroller.lua:OnRightClick
   if not pc.ismastersim then
-    local position = act.pos
+    local position = act:GetActionPoint()
     local mouseover = FindEntityByPos(position, 0.1)
     local controlmods = pc:EncodeControlMods()
+    local platform, pos_x, pos_z = pc:GetPlatformRelativePosition(position.x, position.z)
     if pc.locomotor == nil then
       pc.remote_controls[CONTROL_SECONDARY] = 0
-      SendRPCToServer(RPC.RightClick, act.action.code, position.x, position.z, mouseover, act.rotation ~= 0 and act.rotation or nil, nil, controlmods, act.action.canforce, act.action.mod_name)
+      SendRPCToServer(RPC.RightClick, act.action.code, pos_x, pos_z, mouseover, act.rotation ~= 0 and act.rotation or nil, nil, controlmods, act.action.canforce, act.action.mod_name, platform, platform ~= nil)
     elseif act.action ~= ACTIONS.WALKTO and pc:CanLocomote() then
       act.preview_cb = function()
         pc.remote_controls[CONTROL_SECONDARY] = 0
         local isreleased = not TheInput:IsControlPressed(CONTROL_SECONDARY)
-        SendRPCToServer(RPC.RightClick, act.action.code, position.x, position.z, mouseover, act.rotation ~= 0 and act.rotation or nil, isreleased, controlmods, nil, act.action.mod_name)
+        SendRPCToServer(RPC.RightClick, act.action.code, pos_x, pos_z, mouseover, act.rotation ~= 0 and act.rotation or nil, isreleased, controlmods, nil, act.action.mod_name, platform, platform ~= nil)
       end
     end
   end
@@ -435,28 +438,30 @@ end
 --- PRC call for ACTION
 function Chores:RPC_ACTION(act)
   local pc = ThePlayer.components.playercontroller
-  -- copy from playercontroller.lua:1328
-  if pc.locomotor == nil then
-    pc.remote_controls[CONTROL_ACTION] = BUTTON_REPEAT_COOLDOWN
-    SendRPCToServer(RPC.ActionButton, act.action.code, act.target, nil, act.action.canforce, act.action.mod_name)
+  -- copy from playercontroller.lua:DoActionButton
+  if pc.ismastersim then
+    pc.locomotor:PushAction(act, true)
+    return
+  elseif pc.locomotor == nil then
+    pc:RemoteActionButton(act)
+    return
   elseif pc:CanLocomote() then
     if act.action ~= ACTIONS.WALKTO then
       act.preview_cb = function()
-        pc.remote_controls[CONTROL_ACTION] = BUTTON_REPEAT_COOLDOWN
-        local isreleased = not TheInput:IsControlPressed(CONTROL_ACTION)
-        SendRPCToServer(RPC.ActionButton, act.action.code, act.target, isreleased, nil, act.action.mod_name)
+        pc:RemoteActionButton(act, not TheInput:IsControlPressed(CONTROL_ACTION) or nil)
       end
     end
-    return act
+    pc.locomotor:PreviewAction(buffaction, true)
   end
-  return act
 end
 
 --- PRC call for CONTROLLER_ALTACTION
 function Chores:RPC_CONTROLLER_ALTACTION(act)
   local pc = ThePlayer.components.playercontroller
-  -- copy from playercontroller.lua:630
+  -- copy from playercontroller.lua:DoControllerAltActionButton
   local obj = act.invobject
+  local isspecial = nil
+
   if pc.ismastersim then
     ThePlayer.components.combat:SetTarget(nil)
   elseif obj ~= nil then
@@ -472,12 +477,12 @@ function Chores:RPC_CONTROLLER_ALTACTION(act)
     end
   elseif pc.locomotor == nil then
     pc.remote_controls[CONTROL_CONTROLLER_ALTACTION] = 0
-    SendRPCToServer(RPC.ControllerAltActionButtonPoint, act.action.code, act.pos.x, act.pos.z, nil, act.action.canforce, act.action.mod_name)
+    SendRPCToServer(RPC.ControllerAltActionButtonPoint, act.action.code, act.pos.local_pt.x, act.pos.local_pt.z, nil, act.action.canforce, isspecial, act.action.mod_name, act.pos.walkable_platform, act.pos.walkable_platform ~= nil)
   elseif pc:CanLocomote() then
     act.preview_cb = function()
       pc.remote_controls[CONTROL_CONTROLLER_ALTACTION] = 0
       local isreleased = not TheInput:IsControlPressed(CONTROL_CONTROLLER_ALTACTION)
-      SendRPCToServer(RPC.ControllerAltActionButtonPoint, act.action.code, act.pos.x, act.pos.z, isreleased, nil, act.action.mod_name)
+      SendRPCToServer(RPC.ControllerAltActionButtonPoint, act.action.code, act.pos.local_pt.x, act.pos.local_pt.z, isreleased, nil, isspecial, act.action.mod_name, act.pos.walkable_platform, act.pos.walkable_platform ~= nil)
     end
   end
   return act
@@ -486,19 +491,30 @@ end
 --- PRC call for CONTROLLER_ACTION
 function Chores:RPC_CONTROLLER_ACTION(act)
   local pc = ThePlayer.components.playercontroller
-  -- copy from playercontroller.lua:523
+  -- copy from playercontroller.lua:DoControllerActionButton
   local obj = act.invobject
   if pc.ismastersim then
     ThePlayer.components.combat:SetTarget(nil)
   elseif act.action == ACTIONS.DEPLOY then
     if pc.locomotor == nil then
       pc.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
-      SendRPCToServer(RPC.ControllerActionButtonDeploy, obj, act.pos.x, act.pos.z, act.rotation ~= 0 and act.rotation or nil)
+      SendRPCToServer(RPC.ControllerActionButtonDeploy, obj, act.pos.local_pt.x, act.pos.local_pt.z, act.rotation ~= 0 and act.rotation or nil, nil, act.pos.walkable_platform, act.pos.walkable_platform ~= nil)
     elseif pc:CanLocomote() then
       act.preview_cb = function()
         pc.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
         local isreleased = not TheInput:IsControlPressed(CONTROL_CONTROLLER_ACTION)
-        SendRPCToServer(RPC.ControllerActionButtonDeploy, obj, act.pos.x, act.pos.z, act.rotation ~= 0 and act.rotation or nil, isreleased)
+        SendRPCToServer(RPC.ControllerActionButtonDeploy, obj, act.pos.local_pt.x, act.pos.local_pt.z, act.rotation ~= 0 and act.rotation or nil, isreleased, act.pos.walkable_platform, act.pos.walkable_platform ~= nil)
+      end
+    end
+  elseif obj == nil then
+    if pc.locomotor == nil then
+      pc.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
+      SendRPCToServer(RPC.ControllerActionButtonPoint, act.action.code, act.pos.local_pt.x, act.pos.local_pt.z, nil, act.action.canforce, act.action.mod_name, act.pos.walkable_platform, act.pos.walkable_platform ~= nil)
+    elseif pc:CanLocomote() then
+      act.preview_cb = function()
+        pc.remote_controls[CONTROL_CONTROLLER_ACTION] = 0
+        local isreleased = not TheInput:IsControlPressed(CONTROL_CONTROLLER_ACTION)
+        SendRPCToServer(RPC.ControllerActionButtonPoint, act.action.code, act.pos.local_pt.x, act.pos.local_pt.z, isreleased, nil, act.action.mod_name, act.pos.walkable_platform, act.pos.walkable_platform ~= nil)
       end
     end
   elseif pc.locomotor == nil then
@@ -529,8 +545,8 @@ function Chores:InjectGetActionButtonAction()
   local pc = ThePlayer.components.playercontroller
   local GetActionButtonAction_base = pc.GetActionButtonAction
 
-  pc.GetActionButtonAction = function (self)
+  pc.GetActionButtonAction = function (self, force_target)
     if chores.doingTask then return nil end
-    return GetActionButtonAction_base(self)
+    return GetActionButtonAction_base(self, force_target)
   end
 end

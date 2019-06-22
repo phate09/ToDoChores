@@ -18,7 +18,7 @@ function ChoresPlugin:InitWorld()
 
   self.fertilizes = {
     poop = "poop",
-    guano = "poop",
+    guano = "guano",
     spoiled_food = "spoiled_food",
     rottenegg = "rottenegg",
     fertilizer = "fertilizer",
@@ -37,10 +37,8 @@ function ChoresPlugin:GetAction()
 
   -- find something can fertilize
   local target = FindEntity(ThePlayer, SEE_DIST_WORK_TARGET, nil, nil, {"tree", "fire", "smolder", "event_trigger", "INLIMBO", "NOCLICK"}, {"withered", "barren"})
-  if target == nil then
-    ThePlayer.replica.inventory:ReturnActiveItem()
-    return
-  end -- can not find target
+  -- 找不到任何可施肥的目標，把手上的東西放回物品欄
+  if target == nil then return ReturnActiveItem() end
 
   -- now we have target, let's find fertilizer
   local item = EnsureActiveItem(function(...) return self:isFertilizer(...) end)
@@ -59,9 +57,7 @@ function ChoresPlugin:GetAction()
 end
 
 function ChoresPlugin:isFertilizer(item)
-  if item == nil then return false end
-  local result = self.fertilizes[item.prefab] or false
-  if type(result) == "string" then return self.opt[result] else return result end
+  return CanBeAction(self.fertilizes, self.opt, item)
 end
 
 function ChoresPlugin:GetOpt()
