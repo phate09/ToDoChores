@@ -45,15 +45,21 @@ function ChoresPlugin:InitWorld()
     mushtree_medium = "green_cap",
     mushtree_small = "green_cap",
     mushtree_tall = "green_cap",
+    mushtree_tall_webbed = "green_cap",
     twiggytree = "twiggy_nut",
   }
 
   self.adultTreeAnims = {
     "chop_tall",
+    "idle_loop",
     "idle_tall",
     "idle",
     "sway1_loop_tall",
+    "sway1_loop",
     "sway2_loop_tall",
+    "sway2_loop",
+    "sway3_loop",
+    "sway4_loop",
   }
 end
 
