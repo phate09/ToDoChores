@@ -34,7 +34,7 @@ function ChoresPlugin:GetAction()
   local target
 
   -- 撿地板上可以曬的東西
-  local act = GetClosestPickupAction(function(...) return self:isDryable(...) end)
+  local act = GetClosestPickupAction(function(...) return self:CanBeDry(...) end)
   if act then return act end
 
   -- 尋找空的曬肉架
@@ -43,7 +43,7 @@ function ChoresPlugin:GetAction()
   -- 如果找到東西可以曬
   if target then
     -- 找物品欄內可以曬的東西
-    local invitem = EnsureActiveItem(function(...) return self:isDryable(...) end)
+    local invitem = EnsureActiveItem(function(...) return self:CanBeDry(...) end)
     if invitem then return GetLeftClickAction(target:GetPosition(), target) end
   end
 
@@ -53,9 +53,8 @@ function ChoresPlugin:GetAction()
   if target then return GetLeftClickAction(target:GetPosition(), target) end
 end
 
-function ChoresPlugin:isDryable(item)
-  local result = item and self.dries[item.prefab] or false
-  if type(result) == "string" then return self.opt[result] else return result end
+function ChoresPlugin:CanBeDry(item)
+  return CanBeAction(self.dries, self.opt, item)
 end
 
 function ChoresPlugin:GetOpt()

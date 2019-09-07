@@ -34,11 +34,10 @@ if IS_PLAYING_NOW then
   --- mod main function
   -- modmain need after PostConstruct of `widgets/controls` and after ThePlayer PostInit
   function modmain()
+    modimport("scripts/components/ChoresHelpers")
     -- ensure ThePlayer and widgets/controls exists
     if GLOBAL.ThePlayer and addChoresControls and chores == nil then
-      modimport("scripts/components/ChoresHelpers")
       modimport("scripts/widgets/chores")
-      TranslateModInfo()
       chores = addChoresControls:AddChild(Chores())
       GLOBAL.ThePlayer.chores = env
 
@@ -49,18 +48,18 @@ if IS_PLAYING_NOW then
         if key == CONFIG.open_settings then
           -- inject UpdateSettings() to TheFrontEnd.PopScreen once
           local basePopScreen = TheFrontEnd.PopScreen
-          TheFrontEnd.PopScreen = function (...) 
+          TheFrontEnd.PopScreen = function (...)
             TheFrontEnd.PopScreen = basePopScreen
             UpdateSettings()
+            GaScreenView("Close In-Game Setting", "end")
             basePopScreen(...)
           end
+          GaScreenView("Open In-Game Setting", "start")
           TheFrontEnd:PushScreen(ModConfigurationScreen(modname, true))
         elseif key == CONFIG.toggle_chores then
           chores:Toggle()
         end
       end)
-      
-      GaScreenView("Mod Loaded")
     end
   end
 end

@@ -18,26 +18,51 @@ function ChoresPlugin:InitWorld()
     dug_berrybush_juicy = false,
     dug_berrybush2 = false,
     dug_grass = false,
+    dug_rock_avocado_bush = false,
     dug_sapling = false,
+    dug_sapling_moon = false,
     marblebean = false,
     pinecone = false,
+    rock_avocado_fruit_sprout = false,
     trap_teeth = false,
     twiggy_nut = true,
   }
 
+  -- wormwood 的把種子種在地板的能力
+  if ThePlayer.prefab == 'wormwood' then self.opt['seeds'] = false end
+
   -- 可以被 deploy 的 prefab => 參考的選項開關
+  -- 種子清單可以從 catcoon.lua 複製
   self.deploies = {
     acorn = "acorn",
+    asparagus_seeds = "seeds",
     beemine = "beemine",
+    carrot_seeds = "seeds",
+    corn_seeds = "seeds",
+    dragonfruit_seeds = "seeds",
     dug_berrybush = "dug_berrybush",
     dug_berrybush_juicy = "dug_berrybush_juicy",
     dug_berrybush2 = "dug_berrybush2",
     dug_grass = "dug_grass",
+    dug_rock_avocado_bush = "dug_rock_avocado_bush",
     dug_sapling = "dug_sapling",
+    dug_sapling_moon = "dug_sapling_moon",
+    durian_seeds = "seeds",
+    eggplant_seeds = "seeds",
+    garlic_seeds = "seeds",
     marblebean = "marblebean",
+    onion_seeds = "seeds",
+    pepper_seeds = "seeds",
     pinecone = "pinecone",
+    pomegranate_seeds = "seeds",
+    potato_seeds = "seeds",
+    pumpkin_seeds = "seeds",
+    rock_avocado_fruit_sprout = "rock_avocado_fruit_sprout",
+    seeds = "seeds",
+    tomato_seeds = "seeds",
     trap_teeth = "trap_teeth",
     twiggy_nut = "twiggy_nut",
+    watermelon_seeds = "seeds",
   }
 
   -- 如果找不到種子時，能夠被製作的東西 => 參考的選項開關
@@ -82,9 +107,7 @@ end
 --- 判斷 item 是不是目前使用者所選擇要種植的東西
 -- @param item 一個場上的道具或是物品欄內的道具
 function ChoresPlugin:CanDeploy(item)
-  if item == nil then return false end
-  local ret = self.deploies[item.prefab] or false
-  if type(ret) == "string" then return self.opt[ret] else return result end
+  return CanBeAction(self.deploies, self.opt, item)
 end
 
 --- 取得目前的選項
@@ -124,7 +147,7 @@ end
 
 local function PlacerOnUpdate(self, dt)
   local inst = self.inst
-  -- copy from placer.lua:76
+  -- copy from placer.lua:OnUpdate
   if self.testfn ~= nil then
       self.can_build, self.mouse_blocked = self.testfn(inst:GetPosition(), inst:GetRotation())
   else
@@ -147,7 +170,8 @@ local function PlacerOnUpdate(self, dt)
   end
 end
 
-function ChoresPlugin:PlacerTestFn(pt, rot)
+function ChoresPlugin:PlacerTestFn(pt)
+  -- Copy from playercontroller:OnUpdate testfn
   local mouseover = FindEntityByPos(pt, 0.1)
   local placerItem = FindOnePlayerItem(function (...) return self:CanDeploy(...) end)
 
@@ -158,7 +182,7 @@ function ChoresPlugin:PlacerTestFn(pt, rot)
     end
   end
   -- if something at point or camera heading not a multiple of 45 then hide
-  return placerItem ~= nil and placerItem:IsValid() and placerItem.replica.inventoryitem and placerItem.replica.inventoryitem:CanDeploy(pt, mouseover), mouseover ~= nil or Fcmp(math.fmod(TheCamera:GetHeading(), 45), 0) ~= 0
+  return placerItem ~= nil and placerItem:IsValid() and placerItem.replica.inventoryitem and placerItem.replica.inventoryitem:CanDeploy(pt, mouseover, ThePlayer), (mouseover ~= nil and not mouseover:HasTag("walkableplatform")) or Fcmp(math.fmod(TheCamera:GetHeading(), 45), 0) ~= 0
 end
 
 local function PlacerReposition (self, snapPlayerToMeters)

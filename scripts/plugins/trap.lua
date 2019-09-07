@@ -100,9 +100,7 @@ function ChoresPlugin:forceDropTrap(pos)
 end
 
 function ChoresPlugin:CanPickup(item)
-  if item == nil then return false end
-  local result = self.pickups[item.prefab] or false
-  if type(result) == "string" then return self.opt[result] else return result end
+  return CanBeAction(self.pickups, self.opt, item)
 end
 
 function ChoresPlugin:GetOpt()
