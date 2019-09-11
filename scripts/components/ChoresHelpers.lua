@@ -12,6 +12,7 @@ ANCHOR_BOTTOM = GLOBAL.ANCHOR_BOTTOM
 ANCHOR_LEFT = GLOBAL.ANCHOR_LEFT
 ANCHOR_MIDDLE = GLOBAL.ANCHOR_MIDDLE
 ANCHOR_RIGHT = GLOBAL.ANCHOR_RIGHT
+APP_VERSION = GLOBAL.APP_VERSION
 BufferedAction = GLOBAL.BufferedAction
 BUTTONFONT = GLOBAL.BUTTONFONT
 CONTROL_ACTION = GLOBAL.CONTROL_ACTION
@@ -43,8 +44,11 @@ ModInfoname = GLOBAL.ModInfoname
 NEWFONT = GLOBAL.NEWFONT
 next = GLOBAL.next
 PI = GLOBAL.PI
+PLATFORM = GLOBAL.PLATFORM
 RADIANS = GLOBAL.RADIANS
 rawget = GLOBAL.rawget
+RESOLUTION_X = GLOBAL.RESOLUTION_X
+RESOLUTION_Y = GLOBAL.RESOLUTION_Y
 RoundBiasedUp = GLOBAL.RoundBiasedUp
 RPC = GLOBAL.RPC
 RunInEnvironment = GLOBAL.RunInEnvironment
@@ -63,6 +67,7 @@ TheNet = GLOBAL.TheNet
 ThePlayer = GLOBAL.ThePlayer
 TheSim = GLOBAL.TheSim
 TheWorld = GLOBAL.TheWorld
+tonumber = GLOBAL.tonumber
 UIFONT = GLOBAL.UIFONT
 Vector3 = GLOBAL.Vector3
 
@@ -704,11 +709,12 @@ end
 function GaScreenView(screen_name, session_control)
   local userid = TheNet:GetUserID()
   local version = KnownModIndex:GetModInfo(modname).version
-  local url = "https://www.google-analytics.com/collect?v=1&tid=UA-142147160-1&t=screenview&an=ToDoChores&av="..version.."&cid="..userid.."&ul="..GetIsoLanguageCode().."&cd="..encodeURI(screen_name)
+  local userAgent = ThePlayer.prefab.."/"..tonumber(APP_VERSION)..".0 ("..PLATFORM..")"
+  local url = "https://www.google-analytics.com/collect?v=1&tid=UA-142147160-1&t=screenview&an="..encodeURI(userAgent).."&av="..version.."&cid="..userid.."&ul="..GetIsoLanguageCode().."&cd="..encodeURI(screen_name).."&sr="..RESOLUTION_X.."x"..RESOLUTION_Y
   if session_control == "start" or session_control == "end" then
     url = url .. "&sc=" .. session_control
   end
-  -- DebugLog(url)
+  DebugLog(url)
   TheSim:QueryServer(url, function(result, isSuccessful, resultCode) end, "GET")
 end
 
@@ -721,14 +727,15 @@ function GaEvent(category, action, label, value)
 
   local userid = TheNet:GetUserID()
   local version = KnownModIndex:GetModInfo(modname).version
-  local url = "https://www.google-analytics.com/collect?v=1&tid=UA-142147160-1&t=event&an=ToDoChores&av="..version.."&cid="..userid.."&ul="..GetIsoLanguageCode().."&ec="..encodeURI(category).."&ea="..encodeURI(action)
+  local userAgent = ThePlayer.prefab.."/"..tonumber(APP_VERSION)..".0 ("..PLATFORM..")"
+  local url = "https://www.google-analytics.com/collect?v=1&tid=UA-142147160-1&t=event&an="..encodeURI(userAgent).."&av="..version.."&cid="..userid.."&ul="..GetIsoLanguageCode().."&ec="..encodeURI(category).."&ea="..encodeURI(action).."&sr="..RESOLUTION_X.."x"..RESOLUTION_Y
   if label then
     url = url .. "&el=" .. label
   end
   if value then
     url = url .. "&ev=" .. value
   end
-  -- DebugLog(url)
+  DebugLog(url)
   TheSim:QueryServer(url, function(result, isSuccessful, resultCode) end, "GET")
 end
 
