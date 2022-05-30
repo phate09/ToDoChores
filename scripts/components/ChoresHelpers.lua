@@ -99,7 +99,7 @@ end
 -- @return (boolean)
 function IsDefaultScreen()
   local active_screen = TheFrontEnd:GetActiveScreen()
-  return active_screen and active_screen.name and active_screen.name.find and active_screen.name:find("HUD") ~= nil
+  return active_screen and active_screen.name and active_screen.name.find and active_screen.name:find("HUD") ~= nil and not ThePlayer.HUD:HasInputFocus()
 end
 
 --- Reload setting.
